@@ -13,7 +13,7 @@ export default function NotFound() {
         You rolled a seven.
       </h1>
       <p className="max-w-md text-lg text-bone-dim">
-        No such page on this die. Pick up the shoes and try one of these
+        No such page on this die. Pick the dice back up and try one of these
         instead.
       </p>
       <div className="mt-2 flex flex-wrap justify-center gap-3">

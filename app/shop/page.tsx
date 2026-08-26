@@ -4,7 +4,7 @@ import { products } from "@/lib/products";
 
 export const metadata: Metadata = {
   title: "Shop",
-  description: "All six DiceyShoes pairs — one for every face of the die.",
+  description: "All six DiceyApparel pieces — one for every face of the die.",
 };
 
 export default function ShopPage() {
@@ -12,13 +12,13 @@ export default function ShopPage() {
     <div>
       <header className="border-b border-white/10 pb-8">
         <p className="text-xs uppercase tracking-[0.3em] text-gold">
-          {products.length} pairs
+          {products.length} pieces
         </p>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
           The whole set
         </h1>
         <p className="mt-4 max-w-2xl text-lg text-bone-dim">
-          One shoe per face. Free shipping both ways, because sometimes the die
+          One piece per face. Free shipping both ways, because sometimes the die
           is wrong.
         </p>
       </header>

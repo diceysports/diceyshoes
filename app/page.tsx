@@ -8,14 +8,14 @@ export default function HomePage() {
     <div className="flex flex-col gap-14">
       <section className="pt-4 text-center sm:pt-10">
         <p className="text-xs uppercase tracking-[0.3em] text-gold">
-          Six pairs · One roll
+          Six pieces · One roll
         </p>
         <h1 className="mx-auto mt-4 max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">
-          Let the dice pick your next pair.
+          Let the dice pick your next fit.
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-lg text-bone-dim">
-          Every shoe in the DiceyShoes line sits on a face of a single die. Roll
-          it, wear what comes up, and stop deliberating over sneakers.
+          Every piece in the DiceyApparel line sits on a face of a single die.
+          Roll it, wear what comes up, and stop deliberating over clothes.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link

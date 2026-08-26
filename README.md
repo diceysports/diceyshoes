@@ -1,7 +1,7 @@
-# DiceyShoes
+# DiceyApparel
 
-A small Next.js storefront for a six-shoe sneaker line — one pair per face of a
-die. The homepage widget rolls a die and picks the matching shoe.
+A small Next.js storefront for a six-piece apparel line — one piece per face of
+a die. The homepage widget rolls a die and picks the matching product.
 
 ## Stack
 

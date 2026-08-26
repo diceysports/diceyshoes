@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/AddToCart";
 import { Die } from "@/components/Die";
-import { ShoeArt } from "@/components/ShoeArt";
+import { ProductArt } from "@/components/ProductArt";
 import { formatPrice, getProduct, products } from "@/lib/products";
 
 type ProductPageProps = {
@@ -48,7 +48,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       </Link>
 
       <div className="mt-6 grid gap-10 lg:grid-cols-2">
-        <ShoeArt product={product} className="aspect-[16/11] w-full" />
+        <ProductArt product={product} className="aspect-[16/11] w-full" />
 
         <div>
           <div className="flex items-center gap-3">

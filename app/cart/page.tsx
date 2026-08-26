@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ShoeArt } from "@/components/ShoeArt";
+import { ProductArt } from "@/components/ProductArt";
 import { useCart } from "@/lib/cart";
 import { formatPrice, getProduct } from "@/lib/products";
 
@@ -24,8 +24,8 @@ export default function CartPage() {
         </h1>
         <p className="max-w-md text-lg text-bone-dim">
           {placed
-            ? "This is a demo storefront, so no shoes are actually on their way. Roll again anyway."
-            : "Nothing riding on this roll yet. Pick a pair, or let the die choose for you."}
+            ? "This is a demo storefront, so nothing is actually on its way. Roll again anyway."
+            : "Nothing riding on this roll yet. Pick a piece, or let the die choose for you."}
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           <Link
@@ -67,7 +67,7 @@ export default function CartPage() {
                 key={`${line.slug}-${line.size}`}
                 className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-felt-900 p-4 sm:flex-row sm:items-center"
               >
-                <ShoeArt product={product} className="h-24 w-full sm:w-40" />
+                <ProductArt product={product} className="h-24 w-full sm:w-40" />
 
                 <div className="flex-1">
                   <Link

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Die } from "./Die";
-import { ShoeArt } from "./ShoeArt";
+import { ProductArt } from "./ProductArt";
 import { formatPrice, getProductByFace, products } from "@/lib/products";
 
 const ROLL_MS = 900;
@@ -78,7 +78,7 @@ export function DiceRoller() {
                 Can&apos;t decide? Let the die decide.
               </h2>
               <p className="mt-2 text-bone-dim">
-                Six shoes, six faces. One roll and the house picks your pair —
+                Six pieces, six faces. One roll and the house picks your fit —
                 you can always roll again.
               </p>
             </div>
@@ -90,7 +90,7 @@ export function DiceRoller() {
                 You rolled a {result} — {picked.name}
               </p>
               <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center">
-                <ShoeArt product={picked} className="h-24 w-40 shrink-0" />
+                <ProductArt product={picked} className="h-24 w-40 shrink-0" />
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight">
                     {picked.name}
@@ -104,7 +104,7 @@ export function DiceRoller() {
                       href={`/product/${picked.slug}`}
                       className="rounded-lg border border-white/20 px-4 py-2 text-sm font-medium transition hover:bg-white/10"
                     >
-                      See the pair
+                      See the piece
                     </Link>
                     <button
                       type="button"

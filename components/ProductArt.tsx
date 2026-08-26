@@ -3,9 +3,9 @@ import type { Product } from "@/lib/products";
 
 /**
  * Product art is drawn rather than photographed: a gradient panel, a stylized
- * sneaker silhouette, and the shoe's die face as a watermark.
+ * product silhouette, and the product's die face as a watermark.
  */
-export function ShoeArt({
+export function ProductArt({
   product,
   className = "",
 }: {
@@ -13,7 +13,7 @@ export function ShoeArt({
   className?: string;
 }) {
   const [from, to] = product.gradient;
-  const gradientId = `shoe-gradient-${product.slug}`;
+  const gradientId = `product-gradient-${product.slug}`;
 
   return (
     <div

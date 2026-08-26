@@ -2,7 +2,7 @@ export type Product = {
   /** URL slug, e.g. /product/snake-eyes-runner */
   slug: string;
   name: string;
-  /** The die face (1-6) that lands on this shoe in the roll widget. */
+  /** The die face (1-6) that lands on this product in the roll widget. */
   face: number;
   /** Price in US cents. */
   price: number;

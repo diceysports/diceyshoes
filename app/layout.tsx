@@ -6,11 +6,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "DiceyShoes — let the die pick your next pair",
-    template: "%s · DiceyShoes",
+    default: "DiceyApparel — let the die pick your next fit",
+    template: "%s · DiceyApparel",
   },
   description:
-    "Six shoes, six faces. Roll the die and the house picks your pair.",
+    "Six pieces, six faces. Roll the die and the house picks your fit.",
 };
 
 export default function RootLayout({
@@ -26,7 +26,7 @@ export default function RootLayout({
           </main>
           <footer className="border-t border-white/10">
             <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-8 text-sm text-bone-dim sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <p>© {new Date().getFullYear()} DiceyShoes. Odds subject to change.</p>
+              <p>© {new Date().getFullYear()} DiceyApparel. Odds subject to change.</p>
               <div className="flex gap-4">
                 <Link href="/shop" className="transition hover:text-bone">
                   Shop
