@@ -64,3 +64,5 @@ npm run build    # production build
 npm start        # serve the production build
 npm run typecheck
 ```
+
+<!-- deploy-trigger: 2026-08-26T22:00Z -->
