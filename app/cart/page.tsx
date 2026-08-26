@@ -1,156 +1,76 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { ProductArt } from "@/components/ProductArt";
-import { useCart } from "@/lib/cart";
-import { formatPrice, getProduct } from "@/lib/products";
+import { useCart } from "@/context/CartContext";
+import { ProductPlaceholder } from "@/components/ProductPlaceholder";
+import { formatMoney } from "@/lib/utils/price";
 
 export default function CartPage() {
-  const { lines, ready, count, subtotal, setQty, remove, clear } = useCart();
-  const [placed, setPlaced] = useState(false);
-
-  if (!ready) {
-    return (
-      <div className="py-20 text-center text-bone-dim">Loading your cart…</div>
-    );
-  }
-
-  if (lines.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-5 py-20 text-center">
-        <h1 className="text-4xl font-semibold tracking-tight">
-          {placed ? "Order placed." : "Your cart is empty."}
-        </h1>
-        <p className="max-w-md text-lg text-bone-dim">
-          {placed
-            ? "This is a demo storefront, so nothing is actually on its way. Roll again anyway."
-            : "Nothing riding on this roll yet. Pick a piece, or let the die choose for you."}
-        </p>
-        <div className="flex flex-wrap justify-center gap-3">
-          <Link
-            href="/shop"
-            className="rounded-xl bg-ember px-6 py-3 font-semibold text-bone transition hover:bg-ember-dark"
-          >
-            Shop all six
-          </Link>
-          <Link
-            href="/"
-            className="rounded-xl border border-white/20 px-6 py-3 font-semibold transition hover:bg-white/10"
-          >
-            Roll the die
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const { items, removeItem, setQty, subtotal } = useCart();
 
   return (
-    <div>
-      <header className="border-b border-white/10 pb-8">
-        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
-          Your cart
-        </h1>
-        <p className="mt-3 text-bone-dim">
-          {count} {count === 1 ? "item" : "items"}
-        </p>
-      </header>
+    <section className="mx-auto max-w-[900px] px-5 py-14 md:px-8">
+      <h1 className="font-display mb-10 text-[clamp(32px,5vw,48px)] uppercase leading-none">
+        Your Bag
+      </h1>
 
-      <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_20rem]">
-        <ul className="flex flex-col gap-4">
-          {lines.map((line) => {
-            const product = getProduct(line.slug);
-            if (!product) return null;
-
-            return (
-              <li
-                key={`${line.slug}-${line.size}`}
-                className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-felt-900 p-4 sm:flex-row sm:items-center"
-              >
-                <ProductArt product={product} className="h-24 w-full sm:w-40" />
-
-                <div className="flex-1">
-                  <Link
-                    href={`/product/${product.slug}`}
-                    className="font-semibold tracking-tight transition hover:text-gold"
-                  >
-                    {product.name}
-                  </Link>
-                  <p className="mt-1 text-sm text-bone-dim">
-                    Size {line.size} · {product.colorway}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => remove(line.slug, line.size)}
-                    className="mt-2 text-sm text-bone-dim underline underline-offset-4 transition hover:text-ember"
-                  >
-                    Remove
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center rounded-lg border border-white/15">
-                    <button
-                      type="button"
-                      aria-label={`Decrease quantity of ${product.name}`}
-                      onClick={() => setQty(line.slug, line.size, line.qty - 1)}
-                      className="h-9 w-9 text-lg text-bone-dim transition hover:text-bone"
-                    >
-                      −
-                    </button>
-                    <span className="w-8 text-center font-mono text-sm">
-                      {line.qty}
-                    </span>
-                    <button
-                      type="button"
-                      aria-label={`Increase quantity of ${product.name}`}
-                      onClick={() => setQty(line.slug, line.size, line.qty + 1)}
-                      className="h-9 w-9 text-lg text-bone-dim transition hover:text-bone"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <span className="w-20 text-right font-mono text-gold">
-                    {formatPrice(product.price * line.qty)}
-                  </span>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-
-        <aside className="h-fit rounded-2xl border border-white/10 bg-felt-900 p-6">
-          <h2 className="text-lg font-semibold tracking-tight">Summary</h2>
-          <dl className="mt-4 flex flex-col gap-3 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-bone-dim">Subtotal</dt>
-              <dd className="font-mono">{formatPrice(subtotal)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-bone-dim">Shipping</dt>
-              <dd className="font-mono">Free</dd>
-            </div>
-            <div className="mt-2 flex justify-between border-t border-white/10 pt-3 text-base">
-              <dt className="font-semibold">Total</dt>
-              <dd className="font-mono text-gold">{formatPrice(subtotal)}</dd>
-            </div>
-          </dl>
-
-          <button
-            type="button"
-            onClick={() => {
-              clear();
-              setPlaced(true);
-            }}
-            className="mt-6 w-full rounded-xl bg-ember px-6 py-3 font-semibold text-bone transition hover:bg-ember-dark"
+      {items.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-line px-10 py-16 text-center">
+          <p className="mb-6 text-sm text-fog">Your bag is empty.</p>
+          <Link
+            href="/shop"
+            className="inline-block rounded-full bg-paper px-6 py-3 text-xs font-bold uppercase tracking-wide text-ink hover:bg-accent hover:text-white"
           >
-            Checkout
-          </button>
-          <p className="mt-3 text-center text-xs text-bone-dim">
-            Demo storefront — checkout just clears the cart.
-          </p>
-        </aside>
-      </div>
-    </div>
+            Browse The Catalog
+          </Link>
+        </div>
+      ) : (
+        <>
+          <div className="divide-y divide-line border-t border-line">
+            {items.map((item, idx) => (
+              <div key={`${item.kind}-${item.id}-${item.size}-${idx}`} className="flex items-center gap-5 py-6">
+                <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border border-line">
+                  <ProductPlaceholder brand={item.brand} size="sm" />
+                </div>
+                <div className="flex-1">
+                  <div className="mb-1 text-[11px] uppercase tracking-wide text-fog">{item.brand}</div>
+                  <div className="text-sm font-semibold">{item.name}</div>
+                  <div className="mt-1 text-xs text-fog">Size {item.size}</div>
+                </div>
+                <input
+                  type="number"
+                  min={1}
+                  value={item.qty}
+                  onChange={(e) => setQty(idx, Number(e.target.value))}
+                  className="w-16 rounded-lg border border-line bg-transparent px-2 py-1.5 text-center text-sm"
+                />
+                <div className="w-24 text-right text-sm font-bold">
+                  {formatMoney(item.price * item.qty, item.currency)}
+                </div>
+                <button
+                  onClick={() => removeItem(idx)}
+                  className="text-xs font-semibold uppercase text-fog underline hover:text-paper"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 flex flex-col items-end gap-4 border-t border-line pt-8">
+            <div className="flex w-full max-w-xs justify-between text-sm">
+              <span className="text-fog">Subtotal</span>
+              <span className="text-lg font-bold">{formatMoney(subtotal)}</span>
+            </div>
+            <Link
+              href="/checkout"
+              className="w-full max-w-xs rounded-full bg-paper py-4 text-center text-xs font-bold uppercase tracking-wide text-ink hover:bg-accent hover:text-white"
+            >
+              Checkout
+            </Link>
+          </div>
+        </>
+      )}
+    </section>
   );
 }

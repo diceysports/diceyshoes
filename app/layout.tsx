@@ -1,43 +1,46 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Header } from "@/components/Header";
-import { CartProvider } from "@/lib/cart";
+import { Big_Shoulders_Display, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
+import { Providers } from "@/components/Providers";
+
+const display = Big_Shoulders_Display({
+  subsets: ["latin"],
+  weight: ["600", "800"],
+  variable: "--font-display",
+});
+const body = Inter({ subsets: ["latin"], variable: "--font-body" });
+const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["500"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://diceyshoes.example.com"),
   title: {
-    default: "DiceyApparel — let the die pick your next fit",
-    template: "%s · DiceyApparel",
+    default: "Dicey Shoes — Premium Sneakers & Luxury Footwear",
+    template: "%s — Dicey Shoes",
   },
   description:
-    "Six pieces, six faces. Roll the die and the house picks your fit.",
+    "Discover the latest sneakers, luxury footwear and defining releases from Nike, Jordan, Adidas, Yeezy, Balenciaga, Gucci and more.",
+  robots: { index: false, follow: false }, // POC — flip to index:true at launch
+  openGraph: {
+    title: "Dicey Shoes",
+    description: "Premium footwear discovery — sport culture and luxury fashion, in one catalog.",
+    siteName: "Dicey Shoes",
+  },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen felt-texture">
-        <CartProvider>
+    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`}>
+      <body className="font-body antialiased">
+        <Providers>
+          <div className="border-b border-chrome-line bg-chrome py-1.5 text-center text-[11px] uppercase tracking-[0.14em] text-chrome-fog">
+            New Releases &bull; Restocks &bull; Latest Drops
+          </div>
           <Header />
-          <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
-            {children}
-          </main>
-          <footer className="border-t border-white/10">
-            <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-8 text-sm text-bone-dim sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <p>© {new Date().getFullYear()} DiceyApparel. Odds subject to change.</p>
-              <div className="flex gap-4">
-                <Link href="/shop" className="transition hover:text-bone">
-                  Shop
-                </Link>
-                <Link href="/cart" className="transition hover:text-bone">
-                  Cart
-                </Link>
-              </div>
-            </div>
-          </footer>
-        </CartProvider>
+          <main>{children}</main>
+          <Footer />
+        </Providers>
       </body>
     </html>
   );

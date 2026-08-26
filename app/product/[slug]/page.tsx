@@ -1,99 +1,134 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AddToCart } from "@/components/AddToCart";
-import { Die } from "@/components/Die";
-import { ProductArt } from "@/components/ProductArt";
-import { formatPrice, getProduct, products } from "@/lib/products";
-
-type ProductPageProps = {
-  params: Promise<{ slug: string }>;
-};
-
-export function generateStaticParams() {
-  return products.map((product) => ({ slug: product.slug }));
-}
+import {
+  getProductBySlug,
+  getProductMedia,
+  getRelatedProducts,
+  getVerifiedColorway,
+} from "@/lib/data/products";
+import { resolveAvailability } from "@/lib/utils/availability";
+import { formatMoney } from "@/lib/utils/price";
+import { ProductGallery } from "@/components/ProductGallery";
+import { BuyBox } from "@/components/BuyBox";
+import { Accordion } from "@/components/Accordion";
+import { ProductGrid } from "@/components/ProductGrid";
+import { SectionHeading } from "@/components/SectionHeading";
 
 export async function generateMetadata({
   params,
-}: ProductPageProps): Promise<Metadata> {
-  const { slug } = await params;
-  const product = getProduct(slug);
-
-  if (!product) {
-    return { title: "Not found" };
-  }
-
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
+  const product = await getProductBySlug(params.slug);
+  if (!product) return { title: "Product" };
   return {
-    title: product.name,
-    description: product.tagline,
+    title: `${product.brand.name} ${product.name}`,
+    description: product.description ?? `${product.brand.name} ${product.name} — Dicey Shoes.`,
   };
 }
 
-export default async function ProductPage({ params }: ProductPageProps) {
-  const { slug } = await params;
-  const product = getProduct(slug);
+export default async function ProductPage({ params }: { params: { slug: string } }) {
+  const product = await getProductBySlug(params.slug);
+  if (!product) notFound();
 
-  if (!product) {
-    notFound();
-  }
+  const [media, colorway, related] = await Promise.all([
+    getProductMedia(product.productId),
+    getVerifiedColorway(product.productId),
+    getRelatedProducts(product, 4),
+  ]);
+
+  const stock = resolveAvailability({
+    productId: product.productId,
+    popularityTier: product.popularityTier,
+    availableSizes: product.availableSizes,
+    upcomingReleaseDate: colorway?.releaseDate ?? null,
+  });
 
   return (
-    <div>
-      <Link
-        href="/shop"
-        className="text-sm text-bone-dim transition hover:text-bone"
-      >
-        ← Back to shop
-      </Link>
+    <section className="mx-auto max-w-[1200px] px-5 py-10 md:px-8 md:py-14">
+      <nav className="mb-8 text-xs text-fog">
+        <span>{product.brand.name}</span> <span className="mx-1.5">/</span>{" "}
+        <span className="text-paper/70">{product.name}</span>
+      </nav>
 
-      <div className="mt-6 grid gap-10 lg:grid-cols-2">
-        <ProductArt product={product} className="aspect-[16/11] w-full" />
+      <div className="grid grid-cols-1 gap-10 md:grid-cols-[1.1fr,0.9fr] md:gap-16">
+        <ProductGallery
+          media={media}
+          brand={product.brand.name}
+          model={product.model}
+          styleCode={product.styleCode}
+        />
 
         <div>
-          <div className="flex items-center gap-3">
-            <Die face={product.face} className="h-8 w-8" />
-            <span className="text-xs uppercase tracking-[0.3em] text-gold">
-              Face {product.face} of 6
-            </span>
+          <div className="mb-2.5 text-xs font-bold uppercase tracking-[0.14em] text-accent">
+            {product.brand.name}
           </div>
-
-          <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+          <h1 className="font-display mb-3 text-[clamp(26px,4vw,40px)] uppercase leading-[1.02]">
             {product.name}
           </h1>
-          <p className="mt-3 text-lg text-bone-dim">{product.tagline}</p>
-          <p className="mt-5 font-mono text-2xl text-gold">
-            {formatPrice(product.price)}
-          </p>
+          {colorway?.colorwayName && (
+            <div className="mb-4 text-sm text-fog">{colorway.colorwayName}</div>
+          )}
+          <div className="mb-6 inline-block rounded-full border border-line px-3 py-1.5 font-mono text-[11px] text-fog">
+            {product.styleCode ? `STYLE ${product.styleCode}` : "STYLE CODE UNASSIGNED"}
+          </div>
 
-          <p className="mt-6 leading-relaxed text-bone-dim">
-            {product.description}
-          </p>
+          <div className="mb-7">
+            {product.price.displayable && product.price.amount ? (
+              <>
+                <div className="text-2xl font-bold">
+                  {formatMoney(product.price.amount, product.price.currency)}
+                </div>
+                {product.price.label && (
+                  <div className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-fog">
+                    {product.price.label}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-sm text-fog">Price not available</div>
+            )}
+          </div>
 
-          <AddToCart product={product} />
+          <BuyBox product={product} stock={stock} />
 
-          <dl className="mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 text-sm">
-            <div className="bg-felt-900 p-4">
-              <dt className="text-bone-dim">Colorway</dt>
-              <dd className="mt-1 font-medium">{product.colorway}</dd>
-            </div>
-            <div className="bg-felt-900 p-4">
-              <dt className="text-bone-dim">Heel drop</dt>
-              <dd className="mt-1 font-medium">{product.drop}</dd>
-            </div>
-            <div className="bg-felt-900 p-4">
-              <dt className="text-bone-dim">Sizes</dt>
-              <dd className="mt-1 font-medium">
-                {product.sizes[0]}–{product.sizes[product.sizes.length - 1]} US
-              </dd>
-            </div>
-            <div className="bg-felt-900 p-4">
-              <dt className="text-bone-dim">Shipping</dt>
-              <dd className="mt-1 font-medium">Free, both ways</dd>
-            </div>
-          </dl>
+          <Accordion
+            items={[
+              {
+                title: "Product Details",
+                body:
+                  product.description ??
+                  `${product.brand.name}${product.model ? ` ${product.model}` : ""}. ${
+                    product.gender ? `Gender: ${product.gender}.` : ""
+                  } Category: ${product.category}.`,
+              },
+              {
+                title: "Size Guide",
+                body:
+                  product.availableSizes.length > 0
+                    ? `Reference sizes on file: ${product.availableSizes.join(
+                        ", "
+                      )}. Fit can vary by model — when in doubt, size to your usual for this brand.`
+                    : "",
+              },
+              {
+                title: "Shipping & Returns",
+                body:
+                  stock.state === "IN_STOCK" || stock.state === "LOW_STOCK"
+                    ? "Standard shipping and a 30-day return window apply."
+                    : "",
+              },
+            ]}
+          />
         </div>
       </div>
-    </div>
+
+      {related.length > 0 && (
+        <div className="mt-20">
+          <SectionHeading kicker="Keep Exploring" title="You May Also Like" />
+          <ProductGrid products={related} />
+        </div>
+      )}
+    </section>
   );
 }
