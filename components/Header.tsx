@@ -13,7 +13,7 @@ export function Header() {
         <Link href="/" className="flex items-center gap-2.5">
           <Die face={5} className="h-8 w-8" />
           <span className="text-lg font-semibold tracking-tight">
-            Dicey<span className="text-ember">Apparel</span>
+            Dicey<span className="text-ember">Shoes</span>
           </span>
         </Link>
 

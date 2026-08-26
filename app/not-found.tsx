@@ -3,7 +3,7 @@ import { Die } from "@/components/Die";
 
 export default function NotFound() {
   return (
-    <div className="flex flex-col items-center gap-6 py-16 text-center">
+    <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-4 py-16 text-center sm:px-6">
       <div className="flex gap-3">
         <Die face={3} className="h-16 w-16 -rotate-12" />
         <Die face={4} className="h-16 w-16 rotate-6" />
