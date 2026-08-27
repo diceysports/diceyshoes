@@ -31,6 +31,15 @@ export default function SpotlightCarousel({products=[],excludeSlug=''}){
   };
 
   useEffect(()=>{
+    if(typeof window==='undefined'||!pool.length)return;
+    pool.slice(0,8).forEach(product=>{
+      const image=new window.Image();
+      image.decoding='async';
+      image.src=product.image;
+    });
+  },[pool]);
+
+  useEffect(()=>{
     if(pool.length<2)return;
     const id=window.setInterval(()=>moveTo((index+1)%pool.length),15000);
     return()=>window.clearInterval(id);
@@ -49,11 +58,19 @@ export default function SpotlightCarousel({products=[],excludeSlug=''}){
       </div>
 
       <div className="spotlight-visual">
+        <div className="spotlight-glow" aria-hidden="true"></div>
+
         <div className="spotlight-swipe" aria-live="polite">
-          <Link href={'/product/'+current.slug} className="spotlight-link" aria-label={'View '+current.name}>
-            <img className={'spotlight-shoe '+(animating?'swoosh-out':'')} src={current.image} alt={current.name}/>
+          <Link href={'/product/'+current.slug} className="spotlight-link current" aria-label={'View '+current.name}>
+            <span className="spotlight-image-shell">
+              <img className={'spotlight-shoe '+(animating?'swoosh-out':'')} src={current.image} alt={current.name} draggable="false" decoding="async"/>
+            </span>
           </Link>
-          {incoming&&<Link href={'/product/'+incoming.slug} className="spotlight-link incoming" aria-label={'View '+incoming.name}><img className="spotlight-shoe swoosh-in" src={incoming.image} alt={incoming.name}/></Link>}
+          {incoming&&<Link href={'/product/'+incoming.slug} className="spotlight-link incoming" aria-label={'View '+incoming.name}>
+            <span className="spotlight-image-shell">
+              <img className="spotlight-shoe swoosh-in" src={incoming.image} alt={incoming.name} draggable="false" decoding="async"/>
+            </span>
+          </Link>}
         </div>
 
         <div className="spotlight-meta">
