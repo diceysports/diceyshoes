@@ -46,16 +46,32 @@ export default function SpotlightCarousel({products=[],excludeSlug=''}){
 
   if(!usable.length)return null;
   const current=usable[index%usable.length];
+  const proxyUrl=proxied(current.image);
+
+  const handleImageError=(e)=>{
+    const img=e.currentTarget;
+    if(img.dataset.fallback!=='direct'){
+      img.dataset.fallback='direct';
+      img.src=current.image;
+      return;
+    }
+    failProduct(current.slug);
+  };
 
   return <section className="spot spot-carousel"><div className="w sg">
     <div className="reveal spotlight-copy"><div className="ey">Dicey spotlight</div><h2>MOVE<br/>DIFFERENT.</h2><p>Your rotation should match your ambition. Find the pair that changes how you step into the room.</p><Link className="btn v" href="/shop">SEE THE HEAT</Link></div>
     <div className="sv spotlight-stage">
       <div className="spotlight-swipe" aria-live="polite">
-        <Link href={'/product/'+current.slug} className="spotlight-link" aria-label={'View '+current.name}>
+        <Link
+          href={'/product/'+current.slug}
+          className="spotlight-link"
+          aria-label={'View '+current.name}
+          style={{backgroundImage:`url("${proxyUrl}")`,backgroundRepeat:'no-repeat',backgroundPosition:'center',backgroundSize:'contain'}}
+        >
           <img
             key={current.slug}
             className="spotlight-asset"
-            src={proxied(current.image)}
+            src={proxyUrl}
             alt={current.name}
             width="560"
             height="330"
@@ -63,7 +79,7 @@ export default function SpotlightCarousel({products=[],excludeSlug=''}){
             fetchPriority="high"
             decoding="sync"
             draggable="false"
-            onError={()=>failProduct(current.slug)}
+            onError={handleImageError}
           />
         </Link>
       </div>
