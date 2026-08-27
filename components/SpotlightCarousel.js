@@ -35,7 +35,6 @@ export default function SpotlightCarousel({products=[],excludeSlug=''}){
   return <section className="spot spot-carousel"><div className="w sg">
     <div className="reveal spotlight-copy"><div className="ey">Dicey spotlight</div><h2>MOVE<br/>DIFFERENT.</h2><p>Your rotation should match your ambition. Find the pair that changes how you step into the room.</p><Link className="btn v" href="/shop">SEE THE HEAT</Link></div>
     <div className="sv spotlight-stage">
-      <div className="spotlight-glow"/>
       <div className="spotlight-swipe" aria-live="polite">
         <Link href={'/product/'+current.slug} className="spotlight-link" aria-label={'View '+current.name}>
           <img className={'ss spotlight-shoe current '+(animating?'swoosh-out':'')} src={current.image} alt={current.name}/>
