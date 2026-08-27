@@ -46,5 +46,5 @@ export default function SpotlightCarousel({products=[],excludeSlug=''}){
       <div className="spotlight-meta"><div><span>{current.brand}</span><b>{current.name}</b></div><small>NEW SHOE EVERY 15 SEC</small></div>
       <div className="spotlight-dots">{pool.slice(0,8).map((_,i)=><button key={i} className={i===index?'active':''} onClick={()=>moveTo(i)} aria-label={'Show shoe '+(i+1)}/>)}</div>
     </div>
-  </section>;
+  </div></section>;
 }
