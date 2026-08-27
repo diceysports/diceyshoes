@@ -1,0 +1,31 @@
+/* Dicey Shoes visual polish: darker blended tiles + spotlight carousel */
+.blended-section{background:linear-gradient(180deg,#f3f1ea 0%,#e8e8e2 100%)}
+.blended-section.alt{background:linear-gradient(180deg,#111723 0%,#0c1119 100%);color:#fff}
+.blended-section.alt .k{color:#9db0ff}.blended-section.alt .st>a{color:#d9def5}
+.blended-tiles{gap:16px}.blended-tiles .cat{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.12);box-shadow:0 22px 55px rgba(10,11,13,.18);transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease;background:#151b26;color:#fff}
+.blended-tiles .cat:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 82% 18%,rgba(255,255,255,.18),transparent 34%),linear-gradient(135deg,rgba(255,255,255,.05),rgba(0,0,0,.12));pointer-events:none}
+.blended-tiles .cat:hover{transform:translateY(-4px);box-shadow:0 28px 64px rgba(10,11,13,.26);border-color:rgba(255,255,255,.26)}
+.blended-tiles .cat{z-index:0}.blended-tiles .cat>*{position:relative;z-index:1}
+.blended-tiles .tile-lime{background:linear-gradient(135deg,#24322a 0%,#1b251f 55%,#2b3d2a 100%);color:#d7ff65}
+.blended-tiles .tile-orange{background:linear-gradient(135deg,#3a211b 0%,#2a1916 55%,#4b261d 100%);color:#ff9a78}
+.blended-tiles .tile-pink{background:linear-gradient(135deg,#351d30 0%,#241821 55%,#44223b 100%);color:#ff8bc6}
+.blended-tiles .tile-dark{background:linear-gradient(135deg,#0d1016 0%,#171c27 100%);color:#f4f6ff}
+.blended-tiles .tile-blue{background:linear-gradient(135deg,#17213d 0%,#11182b 55%,#22315d 100%);color:#9fb0ff}
+.blended-tiles .tile-purple{background:linear-gradient(135deg,#261b38 0%,#1a1625 55%,#372252 100%);color:#c9b0ff}
+
+/* Make product image areas feel integrated instead of pasted onto white cards */
+.card .img,.productmedia,.clean-stage{background:radial-gradient(circle at 50% 45%,rgba(49,87,255,.10),transparent 46%),linear-gradient(145deg,#e8e9e6 0%,#dfe1dd 100%);border-color:rgba(17,18,22,.07)}
+.card img,.productmedia img,.clean-home-shoe{mix-blend-mode:multiply;filter:drop-shadow(0 20px 24px rgba(0,0,0,.18));background:transparent}
+
+.spot-carousel{position:relative;overflow:hidden;background:radial-gradient(circle at 75% 35%,rgba(203,255,63,.16),transparent 28%),radial-gradient(circle at 70% 80%,rgba(18,23,36,.55),transparent 45%),linear-gradient(135deg,#1738c9 0%,#3157ff 42%,#253da4 100%)}
+.spot-carousel:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,8,18,.08),transparent 42%,rgba(5,8,18,.16));pointer-events:none}
+.spotlight-copy{position:relative;z-index:2}.spotlight-stage{position:relative;min-height:560px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;padding:24px}.spotlight-orb{position:absolute;width:min(460px,82%);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 40% 35%,#d6ff66 0%,#b6ef2c 48%,#81b918 78%,rgba(129,185,24,0) 80%);left:50%;top:47%;transform:translate(-50%,-50%);filter:drop-shadow(0 24px 44px rgba(0,0,0,.18))}
+.spotlight-swipe{position:relative;height:400px;display:grid;place-items:center;overflow:visible}.spotlight-link{position:absolute;inset:0;display:grid;place-items:center}.spotlight-link.incoming{z-index:3}.spotlight-shoe{position:relative;z-index:2;width:min(520px,95%);max-height:350px;object-fit:contain;mix-blend-mode:multiply;background:transparent;filter:drop-shadow(0 30px 25px rgba(0,0,0,.28));will-change:transform,opacity,filter}
+.dark-spotlight .spotlight-shoe{mix-blend-mode:normal;filter:brightness(1.15) drop-shadow(0 30px 25px rgba(0,0,0,.35))}
+.swoosh-out{animation:diceySwooshOut .9s cubic-bezier(.22,.72,.18,1) forwards}.swoosh-in{animation:diceySwooshIn .9s cubic-bezier(.22,.72,.18,1) forwards}
+@keyframes diceySwooshOut{0%{opacity:1;transform:translateX(0) rotate(0) scale(1);filter:drop-shadow(0 30px 25px rgba(0,0,0,.28))}45%{opacity:1;transform:translateX(45px) rotate(-2deg) scale(1.02)}100%{opacity:0;transform:translateX(185px) rotate(5deg) skewX(-8deg) scale(.96);filter:blur(2px) drop-shadow(-55px 18px 20px rgba(203,255,63,.2))}}
+@keyframes diceySwooshIn{0%{opacity:0;transform:translateX(-190px) rotate(-6deg) skewX(-8deg) scale(.96);filter:blur(2px) drop-shadow(55px 18px 20px rgba(203,255,63,.18))}35%{opacity:1}70%{transform:translateX(12px) rotate(1deg) scale(1.01)}100%{opacity:1;transform:translateX(0) rotate(0) scale(1);filter:drop-shadow(0 30px 25px rgba(0,0,0,.28))}}
+.spotlight-meta{position:relative;z-index:4;display:flex;justify-content:space-between;align-items:end;gap:18px;padding:0 10px;color:#fff}.spotlight-meta span{display:block;color:#cbff3f;font-size:9px;font-weight:900;letter-spacing:.16em;text-transform:uppercase}.spotlight-meta b{display:block;margin-top:5px;font-size:13px;max-width:360px}.spotlight-meta small{font-size:8px;letter-spacing:.12em;color:#cad1ef;font-weight:900;white-space:nowrap}.spotlight-dots{position:relative;z-index:4;display:flex;gap:8px;padding:16px 10px 0}.spotlight-dots button{width:28px;height:4px;border:0;border-radius:999px;background:rgba(255,255,255,.28);padding:0;cursor:pointer;transition:.25s}.spotlight-dots button.active{width:44px;background:#cbff3f}
+
+@media(max-width:900px){.spotlight-stage{min-height:500px;padding:10px 0 24px}.spotlight-swipe{height:360px}.spotlight-shoe{width:92%;max-height:310px}.spotlight-meta{padding:0 18px}.spotlight-dots{padding-left:18px}.blended-section{background:linear-gradient(180deg,#e9ebe7 0%,#dfe2de 100%)}.blended-section.alt{background:linear-gradient(180deg,#101620 0%,#0b1017 100%)}}
+@media(max-width:480px){.blended-tiles .cat{min-height:145px;border-radius:22px;box-shadow:0 14px 34px rgba(10,11,13,.2)}.spotlight-stage{min-height:430px}.spotlight-swipe{height:300px}.spotlight-orb{width:76%;top:43%}.spotlight-shoe{max-height:255px;width:96%}.spotlight-meta{align-items:start;flex-direction:column;gap:8px}.spotlight-meta small{white-space:normal}.spotlight-dots button{width:20px}.spotlight-dots button.active{width:34px}}
