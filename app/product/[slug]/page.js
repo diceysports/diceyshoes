@@ -9,14 +9,15 @@ import {useStore} from '../../../components/StoreProvider';
 
 const BAD_IMAGE=/(ebayimg\.com|flightclub\.com|flightclub|\/TEMPLATE\/|placeholder|logo[-_.])/i;
 const DARK_SHOE=/\b(black|onyx|triple black|black cat|anthracite|dark|noir|shadow)\b/i;
-const MEN_SIZES=['6','6.5','7','7.5','8','8.5','9','9.5','10','10.5','11','11.5','12','12.5','13','14','15'];
-const WOMEN_SIZES=['5','5.5','6','6.5','7','7.5','8','8.5','9','9.5','10','10.5','11','11.5','12'];
-const UNISEX_SIZES=['5','5.5','6','6.5','7','7.5','8','8.5','9','9.5','10','10.5','11','11.5','12','12.5','13','14','15'];
+const MEN_SIZES=['3.5','4','4.5','5','5.5','6','6.5','7','7.5','8','8.5','9','9.5','10','10.5','11','11.5','12','12.5','13','13.5','14','14.5','15'];
+const WOMEN_SIZES=['5','5.5','6','6.5','7','7.5','8','8.5','9','9.5','10','10.5','11','11.5','12','12.5','13','13.5','14','14.5','15','15.5','16','16.5'];
 const proxied=url=>'/api/shoe-image?url='+encodeURIComponent(url);
 
-function sizesFor(p){
-  if(Array.isArray(p?.sizes)&&p.sizes.length)return p.sizes;
-  return p?.gender==='Women'?WOMEN_SIZES:p?.gender==='Men'?MEN_SIZES:UNISEX_SIZES;
+function defaultFit(p){return p?.gender==='Women'?'Women':'Men'}
+function sizesFor(p,fit){
+  if(p?.gender==='Women')return WOMEN_SIZES;
+  if(p?.gender==='Men')return MEN_SIZES;
+  return fit==='Women'?WOMEN_SIZES:MEN_SIZES;
 }
 
 export default function ProductPage(){
@@ -28,6 +29,7 @@ export default function ProductPage(){
   const[detailLoading,setDetailLoading]=useState(false);
   const[activeImage,setActiveImage]=useState('');
   const[badGallery,setBadGallery]=useState(()=>new Set());
+  const[fit,setFit]=useState('Men');
   const[size,setSize]=useState('');
   const{add,toggle,wish}=useStore();
 
@@ -40,6 +42,7 @@ export default function ProductPage(){
 
   useEffect(()=>{
     if(!p?.image)return;
+    setFit(defaultFit(p));setSize('');
     setDetail(null);setBadGallery(new Set());setActiveImage(p.image);setDetailLoading(true);
     const q=p.dbId?`id=${encodeURIComponent(p.dbId)}`:`image=${encodeURIComponent(p.image)}`;
     fetch('/api/product-details?'+q)
@@ -61,10 +64,13 @@ export default function ProductPage(){
   const saved=wish.some(x=>x.slug===p.slug);
   const dark=p.imageMode==='dark'||DARK_SHOE.test(p.name||'');
   const reference=p.referenceOnly===true;
-  const sizes=sizesFor(p);
+  const unisex=p.gender==='Unisex';
+  const activeFit=unisex?fit:defaultFit(p);
+  const sizes=sizesFor(p,activeFit);
   const description=detail?.description||p.description||`Explore the ${p.name} from ${p.brand}.`;
   const shownImage=activeImage&&gallery.includes(activeImage)?activeImage:(gallery[0]||p.image);
 
+  const changeFit=next=>{setFit(next);setSize('')};
   const imageFailed=url=>{
     setBadGallery(prev=>{const next=new Set(prev);next.add(url);return next});
     if(url===shownImage){const next=gallery.find(x=>x!==url);if(next)setActiveImage(next)}
@@ -90,11 +96,20 @@ export default function ProductPage(){
         {(detail?.model||p.model||detail?.styleCode||p.sku)&&<div className="productFacts">
           {(detail?.model||p.model)&&<div><span>Model</span><b>{detail?.model||p.model}</b></div>}
           {(detail?.styleCode||p.sku)&&<div><span>Style code</span><b>{detail?.styleCode||p.sku}</b></div>}
+          {unisex&&<div><span>Fit</span><b>Men's + Women's</b></div>}
           {gallery.length>1&&<div><span>Photos</span><b>{gallery.length} product views</b></div>}
         </div>}
-        <div className="sizehead"><b>Select size</b><span>US sizing</span></div>
+
+        {unisex&&<>
+          <div className="sizehead"><b>Choose sizing</b><span>US sizing</span></div>
+          <div className="fitSwitch" role="group" aria-label="Choose men's or women's sizing">
+            <button type="button" className={fit==='Men'?'active':''} onClick={()=>changeFit('Men')} aria-pressed={fit==='Men'}>MEN'S</button>
+            <button type="button" className={fit==='Women'?'active':''} onClick={()=>changeFit('Women')} aria-pressed={fit==='Women'}>WOMEN'S</button>
+          </div>
+        </>}
+        <div className="sizehead"><b>Select {activeFit.toLowerCase()}'s size</b><span>US {activeFit.toLowerCase()}</span></div>
         <div className="sizes">{sizes.map(s=><button className={size===s?'active':''} onClick={()=>setSize(s)} key={s}>{s}</button>)}</div>
-        {reference?<><button className="save" onClick={()=>toggle(p)}>{saved?'♥ SAVED':'♡ SAVE TO WISHLIST'}</button><div className="details"><div><b>Catalog item</b><span>{p.price==null?'Price is being confirmed.':'Price shown is reference market/catalog data.'}</span></div>{p.sku&&<div><b>SKU</b><span>{p.sku}</span></div>}<div><b>Size run</b><span>Full US size range shown.</span></div></div></>:<><button className="add" disabled={!size} onClick={()=>add(p,size)}>{size?'ADD TO BAG':'SELECT A SIZE'}</button><button className="save" onClick={()=>toggle(p)}>{saved?'♥ SAVED':'♡ SAVE TO WISHLIST'}</button><div className="details"><div><b>Shipping</b><span>Tracked delivery options at checkout.</span></div><div><b>Returns</b><span>Unworn returns subject to store policy.</span></div><div><b>Currency</b><span>{p.price==null?'Price TBD':'USD'}</span></div></div></>}
+        {reference?<><button className="save" onClick={()=>toggle(p)}>{saved?'♥ SAVED':'♡ SAVE TO WISHLIST'}</button><div className="details"><div><b>Catalog item</b><span>{p.price==null?'Price is being confirmed.':'Price shown is reference market/catalog data.'}</span></div>{p.sku&&<div><b>SKU</b><span>{p.sku}</span></div>}<div><b>Sizing</b><span>{unisex?"Men's and women's US sizing available.":`${activeFit}'s US sizing.`}</span></div></div></>:<><button className="add" disabled={!size} onClick={()=>add(p,size,activeFit)}>{size?`ADD ${activeFit.toUpperCase()}'S ${size} TO BAG`:'SELECT A SIZE'}</button><button className="save" onClick={()=>toggle(p)}>{saved?'♥ SAVED':'♡ SAVE TO WISHLIST'}</button><div className="details"><div><b>Shipping</b><span>Tracked delivery options at checkout.</span></div><div><b>Returns</b><span>Unworn returns subject to store policy.</span></div><div><b>Sizing</b><span>{unisex?"Men's and women's US sizing available.":`${activeFit}'s US sizing.`}</span></div><div><b>Currency</b><span>{p.price==null?'Price TBD':'USD'}</span></div></div></>}
       </div>
     </div></section>
     <section><div className="w"><div className="st"><div><div className="k">You may also like</div><h2>MORE HEAT</h2></div></div><div className="grid">{related.map(x=><ProductCard p={x} key={x.slug}/>)}</div></div></section>
