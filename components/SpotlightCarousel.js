@@ -12,20 +12,32 @@ export default function SpotlightCarousel({products=[],excludeSlug=''}){
   const pool=useMemo(()=>{
     const eligible=products.filter(p=>p?.image&&!BAD_IMAGE.test(p.image)&&p.slug!==excludeSlug&&p.imageMode!=='dark'&&!DARK_SHOE.test(p.name||''));
     const reliable=eligible.filter(p=>RELIABLE_IMAGE.test(p.image));
-    const source=reliable.length>=8?reliable:eligible;
+    const source=reliable.length?reliable:eligible;
     const transparentFirst=source.filter(p=>PNG_LIKE.test(p.image));
     const rest=source.filter(p=>!PNG_LIKE.test(p.image));
     return [...transparentFirst,...rest].slice(0,24);
   },[products,excludeSlug]);
 
   const[failed,setFailed]=useState(()=>new Set());
+  const[ready,setReady]=useState(()=>new Set());
   const[index,setIndex]=useState(0);
   const[nextIndex,setNextIndex]=useState(null);
   const[animating,setAnimating]=useState(false);
-  const usable=useMemo(()=>pool.filter(p=>!failed.has(p.slug)),[pool,failed]);
+
+  const candidates=useMemo(()=>pool.filter(p=>!failed.has(p.slug)),[pool,failed]);
+  const usable=useMemo(()=>{
+    const loaded=candidates.filter(p=>ready.has(p.slug));
+    return loaded.length?loaded:candidates.slice(0,1);
+  },[candidates,ready]);
+
+  const markReady=(slug)=>setReady(prev=>{
+    if(prev.has(slug))return prev;
+    const next=new Set(prev);next.add(slug);return next;
+  });
 
   const failProduct=(slug)=>{
-    setFailed(prev=>{const next=new Set(prev);next.add(slug);return next});
+    setFailed(prev=>{if(prev.has(slug))return prev;const next=new Set(prev);next.add(slug);return next});
+    setReady(prev=>{if(!prev.has(slug))return prev;const next=new Set(prev);next.delete(slug);return next});
     setAnimating(false);
     setNextIndex(null);
     setIndex(0);
@@ -47,17 +59,20 @@ export default function SpotlightCarousel({products=[],excludeSlug=''}){
   },[usable.length,index,animating]);
 
   useEffect(()=>{
-    pool.slice(0,12).forEach(p=>{
+    let active=true;
+    pool.forEach(p=>{
       const img=new Image();
-      img.onerror=()=>failProduct(p.slug);
+      img.onload=()=>active&&markReady(p.slug);
+      img.onerror=()=>active&&failProduct(p.slug);
       img.src=proxied(p.image);
     });
+    return()=>{active=false};
   },[pool]);
 
   if(!usable.length)return null;
   const current=usable[index%usable.length];
   const incoming=nextIndex==null?null:usable[nextIndex%usable.length];
-  const photo=(p,cls='')=><div className={'spotlight-photo '+cls}><img className="spotlight-asset" src={proxied(p.image)} alt={p.name} onError={()=>failProduct(p.slug)} decoding="async"/></div>;
+  const photo=(p,cls='')=><div className={'spotlight-photo '+cls} key={p.slug}><img key={p.slug} className="spotlight-asset" src={proxied(p.image)} alt={p.name} loading="eager" fetchPriority="high" draggable="false" onLoad={()=>markReady(p.slug)} onError={()=>failProduct(p.slug)}/></div>;
 
   return <section className="spot spot-carousel"><div className="w sg">
     <div className="reveal spotlight-copy"><div className="ey">Dicey spotlight</div><h2>MOVE<br/>DIFFERENT.</h2><p>Your rotation should match your ambition. Find the pair that changes how you step into the room.</p><Link className="btn v" href="/shop">SEE THE HEAT</Link></div>
