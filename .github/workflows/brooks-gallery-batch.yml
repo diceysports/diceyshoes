@@ -1,0 +1,36 @@
+name: Brooks official gallery crawl
+on:
+  push:
+    branches:
+      - claude/diceyshoes-setup-deploy-n3gzy4
+    paths:
+      - '.github/workflows/brooks-gallery-batch.yml'
+      - 'scripts/brooks-gallery-batch.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  crawl:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        shard: [0,1,2,3,4,5,6]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SHARD: ${{ matrix.shard }}
+      SHARD_SIZE: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/brooks-gallery-batch.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: brooks-gallery-results-${{ matrix.shard }}
+          path: brooks-gallery-results-${{ matrix.shard }}.json
+          retention-days: 3
