@@ -42,14 +42,26 @@ export default function ProductPage(){
 
   useEffect(()=>{
     if(!p?.image)return;
+    let cancelled=false;
     setFit(defaultFit(p));setSize('');
     setDetail(null);setBadGallery(new Set());setActiveImage(p.image);setDetailLoading(true);
     const q=p.dbId?`id=${encodeURIComponent(p.dbId)}`:`image=${encodeURIComponent(p.image)}`;
-    fetch('/api/product-details?'+q)
-      .then(r=>r.ok?r.json():null)
-      .then(d=>{if(d){setDetail(d);if(Array.isArray(d.images)&&d.images.length)setActiveImage(d.images[0])}})
-      .catch(()=>{})
-      .finally(()=>setDetailLoading(false));
+    (async()=>{
+      try{
+        const r=await fetch('/api/product-details?'+q),d=r.ok?await r.json():null;
+        if(!d||cancelled)return;
+        let merged=d;
+        if((d.images?.length||0)<4&&d.styleCode){
+          try{
+            const gr=await fetch('/api/goat-gallery?sku='+encodeURIComponent(d.styleCode)),gd=gr.ok?await gr.json():null;
+            if(gd?.images?.length>1)merged={...d,images:[...new Set([...gd.images,...(d.images||[])])],goatGallery:true};
+          }catch{}
+        }
+        if(cancelled)return;
+        setDetail(merged);if(Array.isArray(merged.images)&&merged.images.length)setActiveImage(merged.images[0]);
+      }catch{}finally{if(!cancelled)setDetailLoading(false)}
+    })();
+    return()=>{cancelled=true};
   },[p?.slug,p?.dbId,p?.image]);
 
   const related=useMemo(()=>p?products.filter(x=>x.slug!==p.slug&&(x.brand===p.brand||x.category===p.category)).slice(0,4):[],[p,products]);
@@ -84,7 +96,7 @@ export default function ProductPage(){
         </div>
         <div className="productThumbs" aria-label="Product photos">
           {gallery.slice(0,8).map((img,i)=><button type="button" className={shownImage===img?'active':''} onClick={()=>setActiveImage(img)} key={img} aria-label={`View photo ${i+1}`}><img src={proxied(img)} alt="" loading={i<3?'eager':'lazy'} onError={e=>{if(e.currentTarget.dataset.fallback)return imageFailed(img);e.currentTarget.dataset.fallback='1';e.currentTarget.src=img}}/></button>)}
-          {detailLoading&&<div className="thumbLoading">Loading more photos…</div>}
+          {detailLoading&&<div className="thumbLoading">Finding more angles…</div>}
         </div>
       </div>
 
