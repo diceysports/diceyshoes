@@ -9,6 +9,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  id-token: write
 jobs:
   crawl:
     strategy:
@@ -29,7 +30,19 @@ jobs:
       - run: npm install --no-save playwright@1.55.0
       - run: npx playwright install --with-deps chromium
       - run: node scripts/brooks-gallery-batch.mjs
+      - name: Import verified Brooks galleries
+        shell: bash
+        run: |
+          set -euo pipefail
+          OIDC_JSON="$(curl -fsSL -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dicey-shoes-enrichment")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).value))")"
+          curl -fsS --max-time 180 \
+            -X POST 'https://mmazwydwswrkqgisotyt.supabase.co/functions/v1/shoe-official-gallery-import' \
+            -H 'content-type: application/json' \
+            -H "Authorization: Bearer ${OIDC_TOKEN}" \
+            --data-binary "@brooks-gallery-results-${SHARD}.json"
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: brooks-gallery-results-${{ matrix.shard }}
           path: brooks-gallery-results-${{ matrix.shard }}.json
