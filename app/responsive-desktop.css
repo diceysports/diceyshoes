@@ -1,5 +1,6 @@
 /* Full-screen responsive pass for phones, laptops, desktops and ultrawide displays */
 html,body{width:100%;min-height:100%;overflow-x:hidden}
+img,video,svg{max-width:100%}
 .w{width:min(1480px,calc(100% - clamp(28px,5vw,96px)));margin-inline:auto}
 .hero{min-height:calc(100svh - 68px);padding:0}
 .hg{min-height:calc(100svh - 68px);grid-template-columns:minmax(0,1.05fr) minmax(420px,.95fr);gap:clamp(32px,5vw,88px);padding:clamp(52px,7vh,96px) 0}
@@ -29,6 +30,8 @@ html,body{width:100%;min-height:100%;overflow-x:hidden}
   .menubtn{font-size:20px;min-width:42px}
   .hero{min-height:calc(100svh - 88px)}
   .hg{min-height:calc(100svh - 88px)}
+  .grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .productgrid,.cartlayout,.sg,.rad{min-width:0}
 }
 
 @media (min-width:1600px){
@@ -57,24 +60,105 @@ html,body{width:100%;min-height:100%;overflow-x:hidden}
   .hero h1{font-size:clamp(58px,8vw,88px)}
   .stage{min-height:390px}
   .shoe{width:min(520px,100%);max-height:none}
+  .links{gap:14px;font-size:10px}
 }
+
+/* Site-wide tablet/mobile hardening */
 @media (max-width:900px){
   .w{width:min(100% - 28px,1180px)}
+  .promo{font-size:8px;line-height:1.35;padding:7px 10px}
+  .nav{height:68px}
+  .ni{gap:10px}
+  .logo{min-width:0}.mark{flex:none}
+  .actions{margin-left:auto;gap:8px;align-items:center}
+  .actions a,.menubtn{min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center}
   .hg{grid-template-columns:1fr;padding:52px 0 42px}
   .hero h1{font-size:clamp(54px,13vw,88px)}
   .hero p{font-size:15px}
   .stage{min-height:330px}
   .shoe{width:min(560px,96%)}
   .track{animation-duration:24s}
+  section{padding:56px 0}
+  .st{align-items:flex-end;gap:18px}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sg,.productgrid,.cartlayout,.rad{grid-template-columns:1fr}
+  .productgrid{gap:28px}
+  .productmedia{min-height:0;padding:18px}
+  .productmedia img{height:auto;max-height:440px}
+  .productinfo,.summary{position:static}
+  .rl{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .news,.releasegrid,.brandgrid{grid-template-columns:1fr}
+  .footgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .footerTop{gap:24px;flex-wrap:wrap}
+  .newsletterForm{width:100%;max-width:none}
+  .drawer{width:min(92vw,430px);max-width:100%}
+  .pagehead{padding:58px 0 34px}
+  .pagehead h1{font-size:clamp(48px,12vw,82px)}
+  .tools{flex-wrap:wrap}
+  .tools input{min-width:220px}
 }
+
 @media (max-width:560px){
   .w{width:calc(100% - 22px)}
+  .promo{font-size:7px;letter-spacing:.09em}
+  .brandname{display:none}
+  .actions{gap:4px;font-size:9px}
+  .actions a,.menubtn{min-width:36px;min-height:36px}
   .hero h1{font-size:clamp(50px,15.5vw,76px);line-height:.82}
   .hg{padding:42px 0 30px}
+  .hero p{font-size:14px;line-height:1.5}
   .stage{min-height:280px}
-  .btn{padding:13px 15px}
+  .btn{padding:13px 15px;max-width:100%;text-align:center}
   .track b{font-size:14px;padding-right:26px}
   .track b:after{margin-left:26px}
+  section{padding:46px 0}
+  .st{align-items:flex-start;flex-direction:column;margin-bottom:20px}
+  .st h2{font-size:clamp(34px,12vw,50px)}
+  .grid{gap:9px;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .card .img{border-radius:13px}
+  .name{font-size:11px;line-height:1.25}
+  .meta{padding:9px 1px}
+  .brand,.k{font-size:8px}
+  .price{font-size:11px}
+  .cat{min-height:132px;font-size:25px;padding:15px}
+  .cats{gap:9px}
+  .sv{min-height:320px}
+  .spot h2{font-size:clamp(50px,16vw,76px)}
+  .rc{padding:24px 20px}.rc h3{font-size:34px}
+  .rl{grid-template-columns:1fr}
+  .tools{flex-direction:column}.tools input,.tools select{width:100%;min-width:0}
+  .sizes{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .product{padding:32px 0}
+  .productmedia{border-radius:18px;padding:10px}
+  .productmedia img{width:100%;max-height:360px}
+  .productinfo h1{font-size:clamp(40px,13vw,60px)}
+  .cartitem{grid-template-columns:82px minmax(0,1fr);gap:12px}
+  .cartitem img{width:82px;height:82px}.cartitem>button{grid-column:2}
+  .summary{padding:20px;border-radius:16px}
+  .summary h2{font-size:42px}
+  .releasepic{aspect-ratio:1.1}
+  .brandtile{min-height:145px;font-size:27px}
+  .footgrid{grid-template-columns:1fr 1fr;gap:24px 16px}
+  .foot{padding-top:42px}
+  .copy{display:flex;flex-direction:column;gap:7px}
+  .newsletterForm div{display:flex;flex-direction:column;gap:8px}
+  .newsletterForm input,.newsletterForm button{width:100%}
+  .drawer{width:100%;max-width:100%;border-radius:0}
 }
-@media (prefers-reduced-motion:reduce){.track{animation:none;transform:none}}
+
+@media (max-width:380px){
+  .grid{grid-template-columns:1fr}
+  .cats{grid-template-columns:1fr}
+  .footgrid{grid-template-columns:1fr}
+  .sizes{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+/* Accessibility, touch and awkward viewport protection */
+button,a,input,select{touch-action:manipulation}
+button,input,select{max-width:100%}
+.card,.story,.releasecard,.brandtile,.cat{min-width:0}
+.name,.sb h3,.releasecard h2,.brandtile,.cat{overflow-wrap:anywhere}
+@media (hover:none){.card:hover img,.story:hover,.releasecard:hover{transform:none}}
+@media (prefers-reduced-motion:reduce){.track{animation:none;transform:none}html{scroll-behavior:auto}}
 /* deployment sync: layout imports this stylesheet */
