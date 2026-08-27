@@ -14,11 +14,10 @@ export default function Header(){
   useEffect(()=>{document.body.style.overflow=open?'hidden':'';const key=e=>e.key==='Escape'&&setOpen(false);window.addEventListener('keydown',key);return()=>{document.body.style.overflow='';window.removeEventListener('keydown',key)}},[open]);
   const close=()=>setOpen(false);
   return <>
-    <div className="promo">DICEY SHOES · 9,000 PAIRS · 30 BRANDS · PRICES IN USD</div>
-    <nav className="nav"><div className="w ni">
+    <nav className="nav reference-nav"><div className="w ni">
       <Link href="/" className="logo"><span className="mark">DS</span><span className="brandname">DICEY SHOES</span></Link>
       <div className="links"><Link href="/shop">Shop</Link><Link href="/men">Men</Link><Link href="/women">Women</Link><Link href="/shop?category=Running">Running</Link><Link href="/shop?category=Basketball">Basketball</Link><Link href="/luxury">Luxury</Link><Link href="/brands">Brands</Link><Link href="/news">News</Link></div>
-      <div className="actions"><Link href="/search" aria-label="Search">⌕</Link><Link href="/wishlist" aria-label="Wishlist">♡ {wish.length||''}</Link><Link href="/cart">Bag {cart.length||''}</Link><button className="menubtn" onClick={()=>setOpen(true)} aria-label="Open menu" aria-expanded={open}>☰</button></div>
+      <div className="actions"><Link href="/wishlist" aria-label="Wishlist">♡ {wish.length||''}</Link><Link href="/cart">Bag {cart.length||''}</Link><button className="menubtn" onClick={()=>setOpen(true)} aria-label="Open menu" aria-expanded={open}>☰</button></div>
     </div></nav>
     <div className={'drawerOverlay '+(open?'show':'')} onClick={close}/>
     <aside className={'drawer '+(open?'open':'')} aria-hidden={!open}>
