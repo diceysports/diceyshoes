@@ -9,7 +9,8 @@ const ALLOWED_HOSTS=[
   'ca.louisvuitton.com',
   'media.balenciaga.cn',
   'cdn-images.farfetch-contents.com',
-  'img.mytheresa.com'
+  'img.mytheresa.com',
+  'www.brooksrunning.com'
 ];
 
 export const runtime='nodejs';
