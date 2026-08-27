@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {useEffect,useState} from 'react';
 import {useStore} from './StoreProvider';
 
-const primary=[['/shop','Shop all 9,000 shoes'],['/search','Find a shoe'],['/community','Community'],['/releases','New releases'],['/brands','All brands']];
+const primary=[['/shop','Shop all'],['/search','Find a shoe'],['/community','Community'],['/releases','New releases'],['/brands','All brands']];
 const categories=[['Lifestyle','Lifestyle'],['Running','Running'],['Basketball','Basketball'],['Skate','Skate'],['Luxury','Luxury']];
 const featuredBrands=['HOKA','On','Salomon','ASICS','New Balance','Nike','Jordan','Adidas','Dior','Maison Margiela'];
 const shop=[['/men','Men'],['/women','Women'],['/wishlist','Wishlist'],['/cart','Bag']];
