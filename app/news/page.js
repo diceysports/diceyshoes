@@ -1,0 +1,2 @@
+import LiveNews from '../../components/LiveNews';
+export default function NewsPage(){return <main><section className="pagehead"><div className="w"><div className="k">Culture feed</div><h1>NEWS</h1><p>Fresh sneaker stories are refreshed from Sneaker News and Nice Kicks every two hours. Every card opens the original publisher.</p></div></section><section><div className="w"><LiveNews limit={18}/></div></section></main>}
