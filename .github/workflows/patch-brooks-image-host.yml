@@ -1,0 +1,29 @@
+name: Patch Brooks image host
+on:
+  push:
+    branches:
+      - claude/diceyshoes-setup-deploy-n3gzy4
+    paths:
+      - '.github/workflows/patch-brooks-image-host.yml'
+      - 'scripts/patch-brooks-image-host.mjs'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/diceyshoes-setup-deploy-n3gzy4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/patch-brooks-image-host.mjs
+      - name: Commit patch
+        run: |
+          if git diff --quiet -- app/api/product-details/route.js; then exit 0; fi
+          git config user.name "diceysports"
+          git config user.email "diceysports@gmail.com"
+          git add app/api/product-details/route.js
+          git commit -m "Allow official Brooks galleries in product details"
+          git push origin HEAD:claude/diceyshoes-setup-deploy-n3gzy4
