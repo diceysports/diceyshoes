@@ -1,0 +1,53 @@
+name: Official brand gallery enrichment
+on:
+  push:
+    branches:
+      - claude/diceyshoes-setup-deploy-n3gzy4
+    paths:
+      - '.github/workflows/official-brand-gallery-batch.yml'
+      - 'scripts/official-brand-gallery-batch.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  crawl:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        brand: ['Mizuno','Onitsuka Tiger','Under Armour','HOKA','Saucony','On','Reebok','Salomon']
+        shard: [0,1,2,3,4,5]
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      BRAND: ${{ matrix.brand }}
+      SHARD: ${{ matrix.shard }}
+      SHARD_SIZE: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/official-brand-gallery-batch.mjs
+      - name: Import verified official galleries
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRAND_SLUG="$(printf '%s' "$BRAND" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-|-$//g')"
+          FILE="official-gallery-${BRAND_SLUG}-${SHARD}.json"
+          OIDC_JSON="$(curl -fsSL -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dicey-shoes-enrichment")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).value))")"
+          curl -fsS --max-time 240 \
+            -X POST 'https://mmazwydwswrkqgisotyt.supabase.co/functions/v1/shoe-official-gallery-import' \
+            -H 'content-type: application/json' \
+            -H "Authorization: Bearer ${OIDC_TOKEN}" \
+            --data-binary "@${FILE}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: official-gallery-${{ matrix.brand }}-${{ matrix.shard }}
+          path: official-gallery-*.json
+          retention-days: 3
