@@ -8,8 +8,23 @@ export const dynamic='force-dynamic';
 
 const headers={apikey:KEY,Authorization:`Bearer ${KEY}`};
 const clean=s=>String(s||'').replace(/\s+/g,' ').trim();
-const htmlDecode=s=>clean(String(s||'').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>'));
-
+const htmlDecode=s=>String(s||'').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+function plainDescription(value=''){
+  let text=String(value||'')
+    .replace(/\\n/g,'\n')
+    .replace(/<br\s*\/?\s*>/gi,'\n\n')
+    .replace(/<\/p\s*>/gi,'\n\n')
+    .replace(/<a\b[^>]*>(.*?)<\/a>/gis,'$1')
+    .replace(/<[^>]+>/g,' ');
+  text=htmlDecode(text)
+    .replace(/DISCLAIMER:\s*There is a possibility that the box will be a Nike Replacement Box\.?/gi,'')
+    .replace(/To shop all [^.]{0,160}(?:click here\.?|$)/gi,'')
+    .replace(/[ \t]+/g,' ')
+    .replace(/\s*\n\s*/g,'\n')
+    .replace(/\n{3,}/g,'\n\n')
+    .trim();
+  return text;
+}
 function allowedImage(value=''){
   try{const u=new URL(String(value).replace(/^http:/,'https:'));return u.protocol==='https:'&&IMAGE_HOSTS.some(h=>u.hostname===h||u.hostname.endsWith('.'+h))}catch{return false}
 }
@@ -18,8 +33,32 @@ function addImage(list,value){
   const v=String(value).replace(/^http:/,'https:').replace(/&amp;/g,'&');
   if(allowedImage(v)&&!list.includes(v))list.push(v);
 }
+function addAnyImage(list,value){
+  if(!value)return;
+  if(typeof value==='string')return addImage(list,value);
+  if(Array.isArray(value))return value.forEach(x=>addAnyImage(list,x));
+  if(typeof value==='object')addImage(list,value.url||value.src||value.image||value.image_url||value.media_url);
+}
+function evenlySpaced(list=[],count=8){
+  if(!Array.isArray(list)||!list.length)return[];
+  if(list.length<=count)return list;
+  if(count===1)return[list[0]];
+  const out=[];for(let i=0;i<count;i++)out.push(list[Math.round(i*(list.length-1)/(count-1))]);return [...new Set(out)];
+}
+function sourceDataImages(data={}){
+  const out=[];
+  addAnyImage(out,data.images);
+  addAnyImage(out,data.gallery);
+  evenlySpaced(data.gallery_360,8).forEach(x=>addAnyImage(out,x));
+  addAnyImage(out,data.image_url||data.image||data.imageurl);
+  return out;
+}
+function sourceDataDescription(data={}){
+  const options=[data.description,data.short_description,data.product_description,data.details?.description];
+  return options.map(plainDescription).find(x=>x.length>80)||'';
+}
 function localizedSource(value=''){
-  try{const u=new URL(value);if(/(^|\.)goat\.com$/i.test(u.hostname)&&/^\/sneakers\//.test(u.pathname))u.pathname='/en-ca'+u.pathname;return u.toString()}catch{return value}
+  try{const u=new URL(String(value).replace(/^http:/,'https:'));if(/(^|\.)goat\.com$/i.test(u.hostname)&&/^\/sneakers\//.test(u.pathname))u.pathname='/en-ca'+u.pathname;return u.toString()}catch{return value}
 }
 function jsonLd(html=''){
   const blocks=[...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
@@ -36,39 +75,37 @@ function metaContent(html,key){
   const tags=html.match(/<meta\b[^>]*>/gi)||[];
   for(const tag of tags){
     if(!new RegExp(`(?:property|name)=["']${key.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}["']`,'i').test(tag))continue;
-    const m=tag.match(/content=(?:"([^"]*)"|'([^']*)')/i);if(m)return htmlDecode(m[1]||m[2]||'');
+    const m=tag.match(/content=(?:"([^"]*)"|'([^']*)')/i);if(m)return plainDescription(m[1]||m[2]||'');
   }
   return '';
 }
 function embeddedDescription(html=''){
   const normalized=html.replace(/\\u002F/gi,'/').replace(/\\u0026/gi,'&').replace(/\\\//g,'/');
-  for(const m of normalized.matchAll(/"description"\s*:\s*"((?:\\.|[^"\\]){80,1800})"/gi)){
-    try{const value=JSON.parse('"'+m[1]+'"');const text=htmlDecode(value.replace(/<[^>]*>/g,' '));if(text.length>100&&!/shop the latest|discover our|buy and sell/i.test(text))return text}catch{}
+  for(const m of normalized.matchAll(/"description"\s*:\s*"((?:\\.|[^"\\]){80,2200})"/gi)){
+    try{const value=JSON.parse('"'+m[1]+'"');const text=plainDescription(value);if(text.length>100&&!/shop the latest|discover our|buy and sell/i.test(text))return text}catch{}
   }
   return '';
 }
 function cleanProductName(raw=''){
   let name=clean(raw).replace(/\s*\|\s*(Flight Club|GOAT|StockX).*$/i,'');
-  const parts=name.split(/\s+-\s+/);
-  if(parts.length>=3)name=parts[0];
-  return name;
+  const parts=name.split(/\s+-\s+/);if(parts.length>=3)name=parts[0];return name;
 }
 function inferredColorway(raw=''){
-  const parts=clean(raw).replace(/\s*\|.*$/,'').split(/\s+-\s+/);
-  if(parts.length>=4)return clean(parts.slice(3).join(' - '));
+  const parts=clean(raw).replace(/\s*\|.*$/,'').split(/\s+-\s+/);if(parts.length>=4)return clean(parts.slice(3).join(' - '));
   const q=(raw.match(/[‘'“"]([^’'”"]{2,45})[’'”"]/ )||[])[1];return q||'';
 }
 function betterFallback(p){
   const name=cleanProductName(p.name)||clean(p.name)||'this shoe';
-  const brand=BRANDS[p.brand_id]||'Dicey Shoes';
-  const model=clean(p.model||'');
-  const sku=clean(p.style_code||'');
-  const color=inferredColorway(p.name||'');
+  const data=p.source_data||{};
+  const brand=data.brand||BRANDS[p.brand_id]||'Dicey Shoes';
+  const model=clean(data.model||p.model||'');
+  const sku=clean(data.sku||p.style_code||'');
+  const color=clean(data.colorway||data.nickname||p.colorway||inferredColorway(p.name||''));
   const collab=/\b(?:x|×)\b/i.test(name)||/(Travis Scott|Off-White|Fragment|Supreme|Kobe Bryant|Pharrell)/i.test(name);
-  const lane=String(p.category||'').toLowerCase()==='running'?'running':String(p.category||'').toLowerCase()==='basketball'?'basketball':String(p.category||'').toLowerCase()==='skate'?'skateboarding':String(p.category||'').toLowerCase()==='luxury'?'luxury footwear':'lifestyle';
-  let text=`The ${name} is ${collab?'a collaborative ':'a '}${brand}${model?` ${model}`:''} release made for ${lane} wear.`;
+  const lane=String(p.category||data.category||'').toLowerCase()==='running'?'running':String(p.category||data.category||'').toLowerCase()==='basketball'?'basketball':String(p.category||data.category||'').toLowerCase()==='skate'?'skateboarding':String(p.category||data.category||'').toLowerCase()==='luxury'?'luxury footwear':'lifestyle';
+  let text=`The ${name} is ${collab?'a collaborative ':'a '}${brand}${model&& !name.toLowerCase().includes(model.toLowerCase())?` ${model}`:''} release made for ${lane} wear.`;
   if(color)text+=` This pair is presented in the ${color} colorway.`;
-  if(model)text+=` It keeps the recognizable ${model} silhouette while this edition gives the shoe its own color and detailing.`;
+  if(model)text+=` It carries the recognizable ${model} silhouette with this edition's own color and detailing.`;
   if(sku)text+=` Style code: ${sku}.`;
   return text;
 }
@@ -82,30 +119,27 @@ async function existingMedia(id){
   const r=await fetch(`${BASE}/shoe_product_media?${qs}`,{headers,cache:'no-store'});if(!r.ok)return[];return r.json();
 }
 async function sourcePage(value,mainImage=''){
-  if(!value||!/^https:\/\//i.test(value))return {description:'',images:[]};
+  if(!value)return {description:'',images:[]};
   try{
-    const url=localizedSource(value);
-    const r=await fetch(url,{headers:{'user-agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 Version/18.6 Mobile/15E148 Safari/604.1','accept':'text/html,application/xhtml+xml'},redirect:'follow',cache:'no-store',signal:AbortSignal.timeout(6000)});
+    const url=localizedSource(value);if(!/^https:\/\//i.test(url))return {description:'',images:[]};
+    const r=await fetch(url,{headers:{'user-agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 Version/18.6 Mobile/15E148 Safari/604.1','accept':'text/html,application/xhtml+xml'},redirect:'follow',cache:'no-store',signal:AbortSignal.timeout(5000)});
     if(!r.ok)return {description:'',images:[]};
     const html=await r.text();const normalized=html.replace(/\\u002F/gi,'/').replace(/\\u0026/gi,'&').replace(/\\\//g,'/');const images=[];let description='';
     const products=[];jsonLd(html).forEach(x=>walkProducts(x,products));
     for(const product of products){
-      if(!description&&product.description)description=htmlDecode(String(product.description).replace(/<[^>]*>/g,' '));
-      const imgs=Array.isArray(product.image)?product.image:[product.image];imgs.filter(Boolean).forEach(x=>addImage(images,typeof x==='string'?x:x?.url));
+      if(!description&&product.description)description=plainDescription(product.description);
+      addAnyImage(images,product.image);
     }
     if(!description)description=metaContent(html,'og:description')||metaContent(html,'description')||embeddedDescription(html);
     addImage(images,metaContent(html,'og:image'));
-    let mainId='';try{mainId=(new URL(mainImage).pathname.match(/\/original\/(\d+)_\d{2}/)||[])[1]||''}catch{}
-    if(/(^|\.)goat\.com$/i.test(new URL(url).hostname)&&mainId){
-      const candidates=normalized.match(/https:\/\/image\.goat\.com\/[^"'<> ]+?\.(?:png|jpe?g|webp)(?:\?[^"'<> ]*)?/gi)||[];
-      candidates.filter(x=>x.includes(`/original/${mainId}_`)).slice(0,20).forEach(x=>addImage(images,x));
-    }
-    return {description,images:images.slice(0,12)};
+    const candidates=normalized.match(/https:\/\/[^"'<> ]+?\.(?:png|jpe?g|webp)(?:\?[^"'<> ]*)?/gi)||[];
+    candidates.slice(0,160).forEach(x=>addImage(images,x));
+    return {description,images:images.slice(0,16)};
   }catch{return {description:'',images:[]}}
 }
 async function imageWorks(url){
   try{
-    const r=await fetch(url,{headers:{'user-agent':'Mozilla/5.0 (compatible; DiceyShoes/1.0)','accept':'image/avif,image/webp,image/*,*/*;q=0.8','range':'bytes=0-2047'},redirect:'follow',cache:'no-store',signal:AbortSignal.timeout(4500)});
+    const r=await fetch(url,{headers:{'user-agent':'Mozilla/5.0 (compatible; DiceyShoes/1.0)','accept':'image/avif,image/webp,image/*,*/*;q=0.8','range':'bytes=0-2047'},redirect:'follow',cache:'no-store',signal:AbortSignal.timeout(4000)});
     const type=(r.headers.get('content-type')||'').toLowerCase();return (r.ok||r.status===206)&&type.startsWith('image/');
   }catch{return false}
 }
@@ -114,11 +148,19 @@ async function verifiedImages(images,main){
 }
 export async function GET(request){
   const q=new URL(request.url).searchParams;const id=q.get('id');const image=q.get('image');const p=await getProduct(id,image);if(!p)return Response.json({error:'Product not found'},{status:404});
-  const images=[];addImage(images,p.image_url);(await existingMedia(p.product_id)).forEach(m=>addImage(images,m.media_url));
-  const best=p.source_data?.bestPrice?.url||p.product_url||'';const source=await sourcePage(best,p.image_url);source.images.forEach(x=>addImage(images,x));
+  const images=[];addImage(images,p.image_url);
+  sourceDataImages(p.source_data||{}).forEach(x=>addImage(images,x));
+  (await existingMedia(p.product_id)).forEach(m=>addImage(images,m.media_url));
+  const best=p.source_data?.bestPrice?.url||p.source_data?.link||p.source_data?.itemurl||p.product_url||'';
+  let source={description:'',images:[]};
+  if(images.length<4||(!sourceDataDescription(p.source_data||{})&&plainDescription(p.description).length<100))source=await sourcePage(best,p.image_url);
+  source.images.forEach(x=>addImage(images,x));
   const gallery=await verifiedImages(images,p.image_url);
-  const generic=/\bby\s+.+\sis a sneakers\b|International size conversions are provided separately|Cataloged as unisex/i.test(p.description||'');
-  const sourceDescription=clean(source.description);
-  const description=(!generic&&clean(p.description).length>90?clean(p.description):sourceDescription.length>100?sourceDescription:betterFallback(p));
-  return Response.json({productId:p.product_id,description,images:gallery,model:p.model||'',styleCode:p.style_code||'',colorway:p.colorway||'',sourceUrl:best},{headers:{'Cache-Control':'public, s-maxage=86400, stale-while-revalidate=604800'}});
+  const dbDescription=plainDescription(p.description);
+  const storedDescription=sourceDataDescription(p.source_data||{});
+  const generic=/\bby\s+.+\sis a sneakers\b|International size conversions are provided separately|Cataloged as unisex|Product imagery and market details are sourced/i.test(dbDescription);
+  const description=storedDescription.length>100?storedDescription:(!generic&&dbDescription.length>100?dbDescription:plainDescription(source.description).length>100?plainDescription(source.description):betterFallback(p));
+  const model=p.source_data?.model||p.model||'';
+  const colorway=p.source_data?.colorway||p.source_data?.nickname||p.colorway||'';
+  return Response.json({productId:p.product_id,description,images:gallery,model,styleCode:p.source_data?.sku||p.style_code||'',colorway,sourceUrl:localizedSource(best)},{headers:{'Cache-Control':'public, s-maxage=86400, stale-while-revalidate=604800'}});
 }
