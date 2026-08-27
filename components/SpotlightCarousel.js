@@ -4,38 +4,60 @@ import {useEffect,useMemo,useState} from 'react';
 
 const BAD_IMAGE=/(ebayimg\.com|flightclub\.com|flightclub|\/TEMPLATE\/|placeholder|logo[-_.])/i;
 const DARK_SHOE=/\b(black|onyx|triple black|black cat|anthracite|dark|noir|shadow)\b/i;
+const RELIABLE_IMAGE=/(static\.nike\.com|image\.goat\.com|images\.stockx\.com|(?:www\.)?stadiumgoods\.com|cdn\.shopify\.com)/i;
 const PNG_LIKE=/\.png(?:\?|$)|static\.nike\.com|stadiumgoods\.com\/cdn\/shop\/files/i;
 const proxied=url=>'/api/shoe-image?url='+encodeURIComponent(url);
 
 export default function SpotlightCarousel({products=[],excludeSlug=''}){
   const pool=useMemo(()=>{
     const eligible=products.filter(p=>p?.image&&!BAD_IMAGE.test(p.image)&&p.slug!==excludeSlug&&p.imageMode!=='dark'&&!DARK_SHOE.test(p.name||''));
-    const transparentFirst=eligible.filter(p=>PNG_LIKE.test(p.image));
-    const rest=eligible.filter(p=>!PNG_LIKE.test(p.image));
-    return [...transparentFirst,...rest].slice(0,18);
+    const reliable=eligible.filter(p=>RELIABLE_IMAGE.test(p.image));
+    const source=reliable.length>=8?reliable:eligible;
+    const transparentFirst=source.filter(p=>PNG_LIKE.test(p.image));
+    const rest=source.filter(p=>!PNG_LIKE.test(p.image));
+    return [...transparentFirst,...rest].slice(0,24);
   },[products,excludeSlug]);
+
+  const[failed,setFailed]=useState(()=>new Set());
   const[index,setIndex]=useState(0);
   const[nextIndex,setNextIndex]=useState(null);
   const[animating,setAnimating]=useState(false);
+  const usable=useMemo(()=>pool.filter(p=>!failed.has(p.slug)),[pool,failed]);
+
+  const failProduct=(slug)=>{
+    setFailed(prev=>{const next=new Set(prev);next.add(slug);return next});
+    setAnimating(false);
+    setNextIndex(null);
+    setIndex(0);
+  };
 
   const moveTo=(target)=>{
-    if(pool.length<2||animating||target===index)return;
-    setNextIndex(target);setAnimating(true);
-    window.setTimeout(()=>{setIndex(target);setNextIndex(null);setAnimating(false)},820);
+    if(usable.length<2||animating)return;
+    const safe=((target%usable.length)+usable.length)%usable.length;
+    if(safe===index%usable.length)return;
+    setNextIndex(safe);
+    setAnimating(true);
+    window.setTimeout(()=>{setIndex(safe);setNextIndex(null);setAnimating(false)},820);
   };
 
   useEffect(()=>{
-    if(pool.length<2)return;
-    const id=window.setInterval(()=>moveTo((index+1)%pool.length),15000);
+    if(usable.length<2)return;
+    const id=window.setInterval(()=>moveTo((index+1)%usable.length),15000);
     return()=>window.clearInterval(id);
-  },[pool.length,index,animating]);
+  },[usable.length,index,animating]);
 
-  useEffect(()=>{pool.slice(0,8).forEach(p=>{const img=new Image();img.src=proxied(p.image)})},[pool]);
+  useEffect(()=>{
+    pool.slice(0,12).forEach(p=>{
+      const img=new Image();
+      img.onerror=()=>failProduct(p.slug);
+      img.src=proxied(p.image);
+    });
+  },[pool]);
 
-  if(!pool.length)return null;
-  const current=pool[index%pool.length];
-  const incoming=nextIndex==null?null:pool[nextIndex%pool.length];
-  const photo=(p,cls='')=><div className={'spotlight-photo '+cls} role="img" aria-label={p.name} style={{backgroundImage:`url("${proxied(p.image)}")`}}/>;
+  if(!usable.length)return null;
+  const current=usable[index%usable.length];
+  const incoming=nextIndex==null?null:usable[nextIndex%usable.length];
+  const photo=(p,cls='')=><div className={'spotlight-photo '+cls}><img className="spotlight-asset" src={proxied(p.image)} alt={p.name} onError={()=>failProduct(p.slug)} decoding="async"/></div>;
 
   return <section className="spot spot-carousel"><div className="w sg">
     <div className="reveal spotlight-copy"><div className="ey">Dicey spotlight</div><h2>MOVE<br/>DIFFERENT.</h2><p>Your rotation should match your ambition. Find the pair that changes how you step into the room.</p><Link className="btn v" href="/shop">SEE THE HEAT</Link></div>
@@ -45,7 +67,7 @@ export default function SpotlightCarousel({products=[],excludeSlug=''}){
         {incoming&&<Link href={'/product/'+incoming.slug} className="spotlight-link incoming" aria-label={'View '+incoming.name}>{photo(incoming,'swoosh-in')}</Link>}
       </div>
       <div className="spotlight-meta"><div><span>{current.brand}</span><b>{current.name}</b></div><small>SWAPS EVERY 15 SEC</small></div>
-      <div className="spotlight-dots">{pool.slice(0,8).map((_,i)=><button type="button" key={i} className={i===index?'active':''} onClick={()=>moveTo(i)} aria-label={'Show shoe '+(i+1)}></button>)}</div>
+      <div className="spotlight-dots">{usable.slice(0,8).map((_,i)=><button type="button" key={i} className={i===index%usable.length?'active':''} onClick={()=>moveTo(i)} aria-label={'Show shoe '+(i+1)}></button>)}</div>
     </div>
   </div></section>;
 }
