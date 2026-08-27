@@ -1,0 +1,3 @@
+'use client';
+import Link from 'next/link';import {money} from '../lib/products';import {useStore} from './StoreProvider';
+export default function ProductCard({p}){const{wish,toggle}=useStore();const on=wish.some(x=>x.slug===p.slug);return <article className="card"><div className="img"><Link href={'/product/'+p.slug}><img loading="lazy" src={p.image} alt={p.name}/></Link><button className="heart" onClick={()=>toggle(p)}>{on?'♥':'♡'}</button></div><div className="meta"><div className="brand">{p.brand}</div><Link href={'/product/'+p.slug} className="name">{p.name}</Link><div className="row"><span className="price">{money(p.price)}</span><small>{p.status}</small></div></div></article>}
