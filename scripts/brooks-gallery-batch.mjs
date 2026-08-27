@@ -22,12 +22,11 @@ async function extract(page,p,url){let res;try{res=await page.goto(url,{waitUnti
 return {productId:p.product_id,name:p.name,model:p.model,styleCode:p.style_code,gender:p.gender,colorway:p.colorway,sourceUrl:page.url(),images,description:product?.description||null,officialName:product?.name||null,price:product?.offers?.price||product?.offers?.lowPrice||null,currency:product?.offers?.priceCurrency||null};}
 
 const products=await get('shoe_products?select=product_id,name,model,style_code,gender,category,colorway&brand_id=eq.27&status=eq.PUBLISHED&order=product_id.asc');
-const ids=products.map(p=>p.product_id);const media=[];for(let i=0;i<ids.length;i+=100){const chunk=ids.slice(i,i+100).join(',');media.push(...await get(`shoe_product_media?select=master_product_id,media_url,media_type&master_product_id=in.(${chunk})&media_type=in.(IMAGE,360_FRAME,THUMBNAIL)`))}
-const count=new Map();for(const m of media){if(!count.has(m.master_product_id))count.set(m.master_product_id,new Set());count.get(m.master_product_id).add(m.media_url)}
-const thin=products.filter(p=>(count.get(p.product_id)?.size||0)<4&&styleParts(p.style_code));const targets=thin.slice(SHARD*SHARD_SIZE,(SHARD+1)*SHARD_SIZE);
+const crawlable=products.filter(p=>styleParts(p.style_code));
+const targets=crawlable.slice(SHARD*SHARD_SIZE,(SHARD+1)*SHARD_SIZE);
 const browser=await chromium.launch({headless:true});const context=await browser.newContext({viewport:{width:1280,height:900},userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'});const page=await context.newPage();
 const results=[],misses=[];
 for(let i=0;i<targets.length;i++){const p=targets[i];let found=null;for(const url of candidates(p)){found=await extract(page,p,url);if(found&&found.images.length>=2)break}if(found){results.push(found);console.log(`[${i+1}/${targets.length}] ${p.product_id} ${p.style_code}: ${found.images.length} angles`)}else{misses.push({productId:p.product_id,name:p.name,styleCode:p.style_code});console.log(`[${i+1}/${targets.length}] ${p.product_id} ${p.style_code}: MISS`)}}
 await browser.close();
-const output={brand:'Brooks',shard:SHARD,shardSize:SHARD_SIZE,totalThin:thin.length,targetCount:targets.length,matched:results.length,missed:misses.length,results,misses,createdAt:new Date().toISOString()};
-const file=`brooks-gallery-results-${SHARD}.json`;await fs.writeFile(file,JSON.stringify(output,null,2));console.log(JSON.stringify({file,totalThin:thin.length,targetCount:targets.length,matched:results.length,missed:misses.length},null,2));
+const output={brand:'Brooks',shard:SHARD,shardSize:SHARD_SIZE,totalCrawlable:crawlable.length,targetCount:targets.length,matched:results.length,missed:misses.length,results,misses,createdAt:new Date().toISOString()};
+const file=`brooks-gallery-results-${SHARD}.json`;await fs.writeFile(file,JSON.stringify(output,null,2));console.log(JSON.stringify({file,totalCrawlable:crawlable.length,targetCount:targets.length,matched:results.length,missed:misses.length},null,2));
