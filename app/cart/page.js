@@ -1,15 +1,14 @@
 'use client';
 import Link from 'next/link';
-import {useState} from 'react';
-import {useSearchParams} from 'next/navigation';
+import {useEffect,useState} from 'react';
 import {useStore} from '../../components/StoreProvider';
 import {money} from '../../lib/products';
 
 export default function CartPage(){
   const{cart,remove}=useStore();
-  const params=useSearchParams();
-  const[cMsg,setCMsg]=useState(params.get('checkout')==='cancelled'?'Checkout was cancelled. Your bag is still here.':'');
+  const[cMsg,setCMsg]=useState('');
   const[busy,setBusy]=useState(false);
+  useEffect(()=>{if(typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('checkout')==='cancelled')setCMsg('Checkout was cancelled. Your bag is still here.')},[]);
   const total=cart.reduce((s,x)=>s+(Number(x.price)||0),0);
   const blocked=cart.some(x=>x.price==null||x.referenceOnly);
 
