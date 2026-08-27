@@ -14,12 +14,36 @@ html,body{width:100%;min-height:100%;overflow-x:hidden}
 .track b{flex:none;font:900 clamp(15px,1.05vw,19px) Impact;padding-right:34px;text-transform:uppercase}
 .track b:after{content:" ✦";color:var(--v);margin-left:34px}
 @keyframes tickerLoop{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* Bigger premium header on laptop/desktop while leaving mobile compact */
+@media (min-width:901px){
+  .promo{padding:9px 12px;font-size:11px;letter-spacing:.16em}
+  .nav{height:88px}
+  .ni{gap:28px}
+  .logo{gap:12px;font-size:14px;letter-spacing:.16em;flex:none}
+  .mark{width:52px;height:52px;font-size:21px}
+  .links{gap:clamp(20px,1.65vw,32px);font-size:11px;letter-spacing:.03em;align-items:center}
+  .links a{padding:12px 0}
+  .actions{gap:18px;font-size:12px;align-items:center;flex:none}
+  .actions a,.menubtn{min-height:42px;display:inline-flex;align-items:center;justify-content:center}
+  .menubtn{font-size:20px;min-width:42px}
+  .hero{min-height:calc(100svh - 88px)}
+  .hg{min-height:calc(100svh - 88px)}
+}
+
 @media (min-width:1600px){
   .w{width:min(1560px,calc(100% - 120px))}
   .hg{grid-template-columns:1fr 1fr}
   .hero h1{font-size:clamp(92px,6.4vw,138px)}
   .shoe{width:min(820px,100%)}
   .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+  .nav{height:94px}
+  .logo{font-size:15px}
+  .mark{width:56px;height:56px;font-size:22px}
+  .links{font-size:12px;gap:clamp(24px,1.8vw,36px)}
+  .actions{font-size:13px;gap:20px}
+  .hero{min-height:calc(100svh - 94px)}
+  .hg{min-height:calc(100svh - 94px)}
 }
 @media (min-width:1100px) and (max-width:1599px){
   .hero h1{font-size:clamp(72px,7.5vw,112px)}
