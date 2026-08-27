@@ -1,4 +1,5 @@
 'use client';
+// Reference homepage: spotlight carousel is the first visual and owns the hero treatment.
 import {useEffect,useState} from 'react';
 import Link from 'next/link';
 import ProductCard from '../components/ProductCard';
