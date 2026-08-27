@@ -2,6 +2,7 @@ const SUPABASE_URL=process.env.NEXT_PUBLIC_SUPABASE_URL||'https://mmazwydwswrkqg
 const SUPABASE_KEY=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||'sb_publishable_qsygJlwjwTVKrumOCyJC5A_Zptqj4xZ';
 const BRANDS={1:'Nike',2:'Jordan',3:'Adidas',4:'Yeezy',5:'Balmain',6:'Christian Louboutin',7:'Louis Vuitton',8:'Gucci',9:'Versace',10:'Balenciaga',11:'New Balance',12:'ASICS',13:'Puma',14:'Reebok',15:'Converse',16:'Vans',17:'Saucony',18:'Salomon',19:'HOKA',20:'On',21:'Dior',22:'Maison Margiela',23:'Alexander McQueen',24:'BAPE',25:'Off-White',26:'Fear of God',27:'Brooks',28:'Mizuno',29:'Under Armour',30:'Onitsuka Tiger'};
 const SIZE=/^(?:[1-9]|1[0-9])(?:\.5)?$/;
+const SIZING=new Set(['Men','Women']);
 
 async function loadProducts(ids){
   const query=new URLSearchParams({
@@ -30,8 +31,9 @@ export async function POST(req){
       const slug=String(item?.slug||'');
       const match=/^db-(\d+)$/.exec(slug);
       const size=String(item?.size||'').trim();
-      if(!match||!SIZE.test(size))return Response.json({ok:false,error:'One or more bag items are not available for checkout.'},{status:400});
-      normalized.push({productId:Number(match[1]),size});
+      const sizing=String(item?.sizing||'').trim();
+      if(!match||!SIZE.test(size)||(sizing&&!SIZING.has(sizing)))return Response.json({ok:false,error:'One or more bag items are not available for checkout.'},{status:400});
+      normalized.push({productId:Number(match[1]),size,sizing});
     }
 
     const ids=[...new Set(normalized.map(x=>x.productId))];
@@ -43,9 +45,9 @@ export async function POST(req){
       const reference=row&&(row.image_usage==='REFERENCE_ONLY'||/KicksDB|SneakerMarket/i.test(row.source_name||''));
       const price=Number(row?.retail_price);
       if(!row||reference||!Number.isFinite(price)||price<=0)return Response.json({ok:false,error:'One or more items are catalog-only or do not have a confirmed checkout price.'},{status:400});
-      const key=`${item.productId}|${item.size}`;
+      const key=`${item.productId}|${item.sizing}|${item.size}`;
       if(grouped.has(key))grouped.get(key).quantity+=1;
-      else grouped.set(key,{row,size:item.size,quantity:1});
+      else grouped.set(key,{row,size:item.size,sizing:item.sizing,quantity:1});
     }
 
     const origin=new URL(req.url).origin;
@@ -61,15 +63,17 @@ export async function POST(req){
     form.set('metadata[store]','Dicey Shoes');
     form.set('metadata[item_count]',String(normalized.length));
 
-    [...grouped.values()].forEach(({row,size,quantity},i)=>{
+    [...grouped.values()].forEach(({row,size,sizing,quantity},i)=>{
       const amount=Math.round(Number(row.retail_price)*100);
       const brand=BRANDS[row.brand_id]||'Dicey Shoes';
+      const sizingLabel=sizing?`${sizing}'s US size ${size}`:`US size ${size}`;
       form.set(`line_items[${i}][price_data][currency]`,String(row.currency||'usd').toLowerCase());
       form.set(`line_items[${i}][price_data][unit_amount]`,String(amount));
       form.set(`line_items[${i}][price_data][product_data][name]`,`${brand} ${row.name}`.slice(0,250));
-      form.set(`line_items[${i}][price_data][product_data][description]`,`US size ${size}`);
+      form.set(`line_items[${i}][price_data][product_data][description]`,sizingLabel);
       form.set(`line_items[${i}][price_data][product_data][metadata][product_id]`,String(row.product_id));
       form.set(`line_items[${i}][price_data][product_data][metadata][size]`,size);
+      if(sizing)form.set(`line_items[${i}][price_data][product_data][metadata][sizing]`,sizing);
       if(/^https:\/\//i.test(row.image_url||''))form.set(`line_items[${i}][price_data][product_data][images][0]`,row.image_url);
       form.set(`line_items[${i}][quantity]`,String(quantity));
     });
