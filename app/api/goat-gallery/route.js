@@ -19,6 +19,17 @@ function collect(value,out,id=''){
   if(typeof value==='object')Object.values(value).forEach(x=>collect(x,out,id));
 }
 
+function angleKey(url){
+  const m=String(url).match(/\/([^/?]+?)_(\d{2})\.(?:png|jpe?g|webp)/i);
+  return m?`${m[1]}_${m[2]}`:url.split('?')[0];
+}
+function quality(url){
+  const s=String(url);if(/\/original\//i.test(s)&&!/\/glow-/i.test(s))return 6;if(/\/medium\//i.test(s))return 5;if(/\/1000\//i.test(s))return 4;if(/\/750\//i.test(s))return 3;if(/\/grid\//i.test(s))return 2;if(/\/375\//i.test(s))return 1;return 0;
+}
+function bestPerAngle(urls){
+  const map=new Map();for(const url of urls){const key=angleKey(url),old=map.get(key);if(!old||quality(url)>quality(old))map.set(key,url)}return [...map.values()].sort((a,b)=>{const am=angleKey(a).match(/_(\d{2})$/),bm=angleKey(b).match(/_(\d{2})$/);return Number(am?.[1]||99)-Number(bm?.[1]||99)});
+}
+
 async function valid(url){
   try{
     const r=await fetch(url,{headers:{accept:'image/avif,image/webp,image/*,*/*;q=.8','user-agent':'Mozilla/5.0 (compatible; DiceyShoes/1.0)','range':'bytes=0-1024'},redirect:'follow',cache:'no-store',signal:AbortSignal.timeout(4000)});
@@ -52,7 +63,7 @@ export async function GET(request){
     const id=String(hit.product_template_id||hit.productTemplateId||hit.id||''),slug=hit.slug||'';
     const images=[];collect(hit,images,id);
     const detail=await templateJson(slug,id);if(detail)collect(detail,images,id);
-    const unique=[...new Set(images)].slice(0,24),checks=await Promise.all(unique.map(async url=>({url,ok:await valid(url)}))),good=checks.filter(x=>x.ok).map(x=>x.url).slice(0,12);
-    return Response.json({sku,found:true,slug,productTemplateId:id,images:good,searchHitCount:hits.length,detailLoaded:!!detail},{headers:{'Cache-Control':'public, s-maxage=86400, stale-while-revalidate=604800'}});
+    const unique=bestPerAngle(images).slice(0,16),checks=await Promise.all(unique.map(async url=>({url,ok:await valid(url)}))),good=checks.filter(x=>x.ok).map(x=>x.url).slice(0,12);
+    return Response.json({sku,found:true,slug,productTemplateId:id,images:good,angles:good.length,searchHitCount:hits.length,detailLoaded:!!detail},{headers:{'Cache-Control':'public, s-maxage=86400, stale-while-revalidate=604800'}});
   }catch(e){return Response.json({sku,found:false,images:[],error:'GOAT gallery lookup failed'},{status:502})}
 }
