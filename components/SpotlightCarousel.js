@@ -4,9 +4,14 @@ import {useEffect,useMemo,useState} from 'react';
 
 const BAD_IMAGE=/(ebayimg\.com|flightclub\.com|flightclub|\/TEMPLATE\/|placeholder|logo[-_.])/i;
 const DARK_SHOE=/\b(black|onyx|triple black|black cat|anthracite|dark|noir|shadow)\b/i;
+const TRANSPARENT_FRIENDLY=/(static\.nike\.com|stadiumgoods\.com\/cdn\/shop\/files)/i;
 
 export default function SpotlightCarousel({products=[],excludeSlug=''}){
-  const pool=useMemo(()=>products.filter(p=>p?.image&&!BAD_IMAGE.test(p.image)&&p.slug!==excludeSlug&&p.imageMode!=='dark'&&!DARK_SHOE.test(p.name||'')).slice(0,18),[products,excludeSlug]);
+  const pool=useMemo(()=>{
+    const eligible=products.filter(p=>p?.image&&!BAD_IMAGE.test(p.image)&&p.slug!==excludeSlug&&p.imageMode!=='dark'&&!DARK_SHOE.test(p.name||''));
+    const clean=eligible.filter(p=>TRANSPARENT_FRIENDLY.test(p.image));
+    return (clean.length>=6?clean:eligible).slice(0,18);
+  },[products,excludeSlug]);
   const[index,setIndex]=useState(0);
   const[nextIndex,setNextIndex]=useState(null);
   const[animating,setAnimating]=useState(false);
@@ -31,14 +36,14 @@ export default function SpotlightCarousel({products=[],excludeSlug=''}){
   if(!pool.length)return null;
   const current=pool[index%pool.length];
   const incoming=nextIndex==null?null:pool[nextIndex%pool.length];
+  const fallbackNext=()=>{if(pool.length>1&&!animating)moveTo((index+1)%pool.length)};
 
   return <section className="spot spot-carousel"><div className="w sg">
     <div className="reveal spotlight-copy"><div className="ey">Dicey spotlight</div><h2>MOVE<br/>DIFFERENT.</h2><p>Your rotation should match your ambition. Find the pair that changes how you step into the room.</p><Link className="btn v" href="/shop">SEE THE HEAT</Link></div>
     <div className="sv spotlight-stage">
-      <div className="spotlight-glow"/>
       <div className="spotlight-swipe" aria-live="polite">
         <Link href={'/product/'+current.slug} className="spotlight-link" aria-label={'View '+current.name}>
-          <img className={'ss spotlight-shoe current '+(animating?'swoosh-out':'')} src={current.image} alt={current.name}/>
+          <img className={'ss spotlight-shoe current '+(animating?'swoosh-out':'')} src={current.image} alt={current.name} onError={fallbackNext}/>
         </Link>
         {incoming&&<Link href={'/product/'+incoming.slug} className="spotlight-link incoming" aria-label={'View '+incoming.name}><img className="ss spotlight-shoe swoosh-in" src={incoming.image} alt={incoming.name}/></Link>}
       </div>
