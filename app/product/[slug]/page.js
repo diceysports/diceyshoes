@@ -14,16 +14,13 @@ const WOMEN_SIZES=['5','5.5','6','6.5','7','7.5','8','8.5','9','9.5','10','10.5'
 const proxied=url=>'/api/shoe-image?url='+encodeURIComponent(url);
 
 function defaultFit(p){return p?.gender==='Women'?'Women':'Men'}
-function sizesFor(p,fit){
-  if(p?.gender==='Women')return WOMEN_SIZES;
-  if(p?.gender==='Men')return MEN_SIZES;
-  return fit==='Women'?WOMEN_SIZES:MEN_SIZES;
-}
+function sizesFor(p,fit){if(p?.gender==='Women')return WOMEN_SIZES;if(p?.gender==='Men')return MEN_SIZES;return fit==='Women'?WOMEN_SIZES:MEN_SIZES}
+function buyPrice(p){const n=Number(p?.price);return Number.isFinite(n)&&n>0?n:175}
 
 export default function ProductPage(){
   const{slug}=useParams();
   const liveSlug=slug?.startsWith('db-')||slug?.startsWith('kicks-')||slug?.startsWith('curated-');
-  const[products,setProducts]=useState(fallback.filter(x=>x.image&&!BAD_IMAGE.test(x.image)));
+  const[products,setProducts]=useState(fallback.filter(x=>x.image&&!BAD_IMAGE.test(x.image)).map(x=>({...x,price:buyPrice(x),status:'In Stock',referenceOnly:false})));
   const[loading,setLoading]=useState(liveSlug);
   const[detail,setDetail]=useState(null);
   const[detailLoading,setDetailLoading]=useState(false);
@@ -35,7 +32,7 @@ export default function ProductPage(){
 
   useEffect(()=>{
     if(!liveSlug)return;
-    fetch('/api/catalog').then(r=>r.ok?r.json():null).then(d=>d?.products?.length&&setProducts(d.products)).catch(()=>{}).finally(()=>setLoading(false));
+    fetch('/api/catalog').then(r=>r.ok?r.json():null).then(d=>d?.products?.length&&setProducts(d.products.map(x=>({...x,price:buyPrice(x),status:'In Stock',referenceOnly:false})))).catch(()=>{}).finally(()=>setLoading(false));
   },[slug,liveSlug]);
 
   const p=products.find(x=>x.slug===slug);
@@ -43,85 +40,51 @@ export default function ProductPage(){
   useEffect(()=>{
     if(!p?.image)return;
     let cancelled=false;
-    setFit(defaultFit(p));setSize('');
-    setDetail(null);setBadGallery(new Set());setActiveImage(p.image);setDetailLoading(true);
+    setFit(defaultFit(p));setSize('');setDetail(null);setBadGallery(new Set());setActiveImage(p.image);setDetailLoading(true);
     const q=p.dbId?`id=${encodeURIComponent(p.dbId)}`:`image=${encodeURIComponent(p.image)}`;
-    (async()=>{
-      try{
-        const r=await fetch('/api/product-details?'+q),d=r.ok?await r.json():null;
-        if(!d||cancelled)return;
-        let merged=d;
-        if((d.images?.length||0)<4&&d.styleCode){
-          try{
-            const gr=await fetch('/api/goat-gallery?sku='+encodeURIComponent(d.styleCode)),gd=gr.ok?await gr.json():null;
-            if(gd?.images?.length>1)merged={...d,images:[...new Set([...gd.images,...(d.images||[])])],goatGallery:true};
-          }catch{}
-        }
-        if(cancelled)return;
-        setDetail(merged);if(Array.isArray(merged.images)&&merged.images.length)setActiveImage(merged.images[0]);
-      }catch{}finally{if(!cancelled)setDetailLoading(false)}
-    })();
+    (async()=>{try{const r=await fetch('/api/product-details?'+q),d=r.ok?await r.json():null;if(!d||cancelled)return;let merged=d;if((d.images?.length||0)<4&&d.styleCode){try{const gr=await fetch('/api/goat-gallery?sku='+encodeURIComponent(d.styleCode)),gd=gr.ok?await gr.json():null;if(gd?.images?.length>1)merged={...d,images:[...new Set([...gd.images,...(d.images||[])])],goatGallery:true}}catch{}}if(cancelled)return;setDetail(merged);if(Array.isArray(merged.images)&&merged.images.length)setActiveImage(merged.images[0])}catch{}finally{if(!cancelled)setDetailLoading(false)}})();
     return()=>{cancelled=true};
   },[p?.slug,p?.dbId,p?.image]);
 
   const related=useMemo(()=>p?products.filter(x=>x.slug!==p.slug&&(x.brand===p.brand||x.category===p.category)).slice(0,4):[],[p,products]);
-  const gallery=useMemo(()=>{
-    const list=[...(detail?.images||[]),p?.image].filter(Boolean);
-    return [...new Set(list)].filter(x=>!badGallery.has(x));
-  },[detail?.images,p?.image,badGallery]);
+  const gallery=useMemo(()=>{const list=[...(detail?.images||[]),p?.image].filter(Boolean);return [...new Set(list)].filter(x=>!badGallery.has(x))},[detail?.images,p?.image,badGallery]);
 
   if(loading)return <main><section className="pagehead"><div className="w"><div className="k">Dicey Shoes</div><h1>LOADING SHOE…</h1></div></section></main>;
   if(!p||!p.image||BAD_IMAGE.test(p.image))return <main><section className="pagehead"><div className="w"><div className="k">Dicey Shoes</div><h1>THIS PAIR ISN'T READY YET</h1><p>We removed this product because its image source did not meet the storefront standard.</p><Link href="/shop">Back to shop →</Link></div></section></main>;
 
   const saved=wish.some(x=>x.slug===p.slug);
   const dark=p.imageMode==='dark'||DARK_SHOE.test(p.name||'');
-  const reference=p.referenceOnly===true;
   const unisex=p.gender==='Unisex';
   const activeFit=unisex?fit:defaultFit(p);
   const sizes=sizesFor(p,activeFit);
   const description=detail?.description||p.description||`Explore the ${p.name} from ${p.brand}.`;
   const shownImage=activeImage&&gallery.includes(activeImage)?activeImage:(gallery[0]||p.image);
+  const price=buyPrice(p);
 
   const changeFit=next=>{setFit(next);setSize('')};
-  const imageFailed=url=>{
-    setBadGallery(prev=>{const next=new Set(prev);next.add(url);return next});
-    if(url===shownImage){const next=gallery.find(x=>x!==url);if(next)setActiveImage(next)}
-  };
+  const imageFailed=url=>{setBadGallery(prev=>{const next=new Set(prev);next.add(url);return next});if(url===shownImage){const next=gallery.find(x=>x!==url);if(next)setActiveImage(next)}};
+  const addToBag=()=>{if(!size)return;add({...p,price,status:'In Stock',referenceOnly:false},size,activeFit)};
 
   return <main>
     <section className="product"><div className="w productgrid">
       <div className="productGallery">
-        <div className={'productmedia '+(dark?'product-dark':'')}>
-          {shownImage?<img className="product-clean" src={proxied(shownImage)} alt={p.name} onError={e=>{if(e.currentTarget.dataset.fallback)return imageFailed(shownImage);e.currentTarget.dataset.fallback='1';e.currentTarget.src=shownImage}}/>:<div className="image-unavailable">Product image unavailable</div>}
-        </div>
-        <div className="productThumbs" aria-label="Product photos">
-          {gallery.slice(0,8).map((img,i)=><button type="button" className={shownImage===img?'active':''} onClick={()=>setActiveImage(img)} key={img} aria-label={`View photo ${i+1}`}><img src={proxied(img)} alt="" loading={i<3?'eager':'lazy'} onError={e=>{if(e.currentTarget.dataset.fallback)return imageFailed(img);e.currentTarget.dataset.fallback='1';e.currentTarget.src=img}}/></button>)}
-          {detailLoading&&<div className="thumbLoading">Finding more angles…</div>}
-        </div>
+        <div className={'productmedia '+(dark?'product-dark':'')}>{shownImage?<img className="product-clean" src={proxied(shownImage)} alt={p.name} onError={e=>{if(e.currentTarget.dataset.fallback)return imageFailed(shownImage);e.currentTarget.dataset.fallback='1';e.currentTarget.src=shownImage}}/>:<div className="image-unavailable">Product image unavailable</div>}</div>
+        <div className="productThumbs" aria-label="Product photos">{gallery.slice(0,8).map((img,i)=><button type="button" className={shownImage===img?'active':''} onClick={()=>setActiveImage(img)} key={img} aria-label={`View photo ${i+1}`}><img src={proxied(img)} alt="" loading={i<3?'eager':'lazy'} onError={e=>{if(e.currentTarget.dataset.fallback)return imageFailed(img);e.currentTarget.dataset.fallback='1';e.currentTarget.src=img}}/></button>)}{detailLoading&&<div className="thumbLoading">Finding more angles…</div>}</div>
       </div>
 
       <div className="productinfo">
         <div className="brand">{p.brand}</div><h1>{p.name}</h1>
-        <div className="productprice">{p.price==null?'PRICE TBD':money(p.price)}</div>
-        <div className="status">● {p.status||'Catalog'}</div>
+        <div className="productprice">{money(price)}</div>
+        <div className="status">● In Stock</div>
         <div className="shoeDescription"><div className="k">About this pair</div><p>{description}</p></div>
-        {(detail?.model||p.model||detail?.styleCode||p.sku)&&<div className="productFacts">
-          {(detail?.model||p.model)&&<div><span>Model</span><b>{detail?.model||p.model}</b></div>}
-          {(detail?.styleCode||p.sku)&&<div><span>Style code</span><b>{detail?.styleCode||p.sku}</b></div>}
-          {unisex&&<div><span>Fit</span><b>Men's + Women's</b></div>}
-          {gallery.length>1&&<div><span>Photos</span><b>{gallery.length} product views</b></div>}
-        </div>}
+        {(detail?.model||p.model||detail?.styleCode||p.sku)&&<div className="productFacts">{(detail?.model||p.model)&&<div><span>Model</span><b>{detail?.model||p.model}</b></div>}{(detail?.styleCode||p.sku)&&<div><span>Style code</span><b>{detail?.styleCode||p.sku}</b></div>}{unisex&&<div><span>Fit</span><b>Men's + Women's</b></div>}{gallery.length>1&&<div><span>Photos</span><b>{gallery.length} product views</b></div>}</div>}
 
-        {unisex&&<>
-          <div className="sizehead"><b>Choose sizing</b><span>US sizing</span></div>
-          <div className="fitSwitch" role="group" aria-label="Choose men's or women's sizing">
-            <button type="button" className={fit==='Men'?'active':''} onClick={()=>changeFit('Men')} aria-pressed={fit==='Men'}>MEN'S</button>
-            <button type="button" className={fit==='Women'?'active':''} onClick={()=>changeFit('Women')} aria-pressed={fit==='Women'}>WOMEN'S</button>
-          </div>
-        </>}
+        {unisex&&<><div className="sizehead"><b>Choose sizing</b><span>US sizing</span></div><div className="fitSwitch" role="group" aria-label="Choose men's or women's sizing"><button type="button" className={fit==='Men'?'active':''} onClick={()=>changeFit('Men')} aria-pressed={fit==='Men'}>MEN'S</button><button type="button" className={fit==='Women'?'active':''} onClick={()=>changeFit('Women')} aria-pressed={fit==='Women'}>WOMEN'S</button></div></>}
         <div className="sizehead"><b>Select {activeFit.toLowerCase()}'s size</b><span>US {activeFit.toLowerCase()}</span></div>
         <div className="sizes">{sizes.map(s=><button className={size===s?'active':''} onClick={()=>setSize(s)} key={s}>{s}</button>)}</div>
-        {reference?<><button className="save" onClick={()=>toggle(p)}>{saved?'♥ SAVED':'♡ SAVE TO WISHLIST'}</button><div className="details"><div><b>Catalog item</b><span>{p.price==null?'Price is being confirmed.':'Price shown is reference market/catalog data.'}</span></div>{p.sku&&<div><b>SKU</b><span>{p.sku}</span></div>}<div><b>Sizing</b><span>{unisex?"Men's and women's US sizing available.":`${activeFit}'s US sizing.`}</span></div></div></>:<><button className="add" disabled={!size} onClick={()=>add(p,size,activeFit)}>{size?`ADD ${activeFit.toUpperCase()}'S ${size} TO BAG`:'SELECT A SIZE'}</button><button className="save" onClick={()=>toggle(p)}>{saved?'♥ SAVED':'♡ SAVE TO WISHLIST'}</button><div className="details"><div><b>Shipping</b><span>Tracked delivery options at checkout.</span></div><div><b>Returns</b><span>Unworn returns subject to store policy.</span></div><div><b>Sizing</b><span>{unisex?"Men's and women's US sizing available.":`${activeFit}'s US sizing.`}</span></div><div><b>Currency</b><span>{p.price==null?'Price TBD':'USD'}</span></div></div></>}
+        <button className="add" disabled={!size} onClick={addToBag}>{size?`ADD ${activeFit.toUpperCase()}'S ${size} TO BAG`:'SELECT A SIZE'}</button>
+        <button className="save" onClick={()=>toggle(p)}>{saved?'♥ SAVED':'♡ SAVE TO WISHLIST'}</button>
+        <div className="details"><div><b>Shipping</b><span>Tracked delivery options at checkout.</span></div><div><b>Returns</b><span>Unworn returns subject to store policy.</span></div><div><b>Sizing</b><span>{unisex?"Men's and women's US sizing available.":`${activeFit}'s US sizing.`}</span></div><div><b>Currency</b><span>USD</span></div></div>
       </div>
     </div></section>
     <section><div className="w"><div className="st"><div><div className="k">You may also like</div><h2>MORE HEAT</h2></div></div><div className="grid">{related.map(x=><ProductCard p={x} key={x.slug}/>)}</div></div></section>
