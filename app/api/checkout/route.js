@@ -1,12 +1,14 @@
+import {products as fallbackProducts} from '../../../lib/products';
+
 const SUPABASE_URL=process.env.NEXT_PUBLIC_SUPABASE_URL||'https://mmazwydwswrkqgisotyt.supabase.co';
 const SUPABASE_KEY=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||'sb_publishable_qsygJlwjwTVKrumOCyJC5A_Zptqj4xZ';
 const BRANDS={1:'Nike',2:'Jordan',3:'Adidas',4:'Yeezy',5:'Balmain',6:'Christian Louboutin',7:'Louis Vuitton',8:'Gucci',9:'Versace',10:'Balenciaga',11:'New Balance',12:'ASICS',13:'Puma',14:'Reebok',15:'Converse',16:'Vans',17:'Saucony',18:'Salomon',19:'HOKA',20:'On',21:'Dior',22:'Maison Margiela',23:'Alexander McQueen',24:'BAPE',25:'Off-White',26:'Fear of God',27:'Brooks',28:'Mizuno',29:'Under Armour',30:'Onitsuka Tiger'};
-const SIZE=/^(?:[1-9]|1[0-9])(?:\.5)?$/;
-const SIZING=new Set(['Men','Women']);
+const DEFAULT_PRICE=175;
 
 async function loadProducts(ids){
+  if(!ids.length)return[];
   const query=new URLSearchParams({
-    select:'product_id,brand_id,name,retail_price,currency,image_url,image_usage,source_name,status',
+    select:'product_id,brand_id,name,retail_price,currency,image_url,status',
     product_id:`in.(${ids.join(',')})`,
     status:'eq.PUBLISHED'
   });
@@ -18,33 +20,38 @@ async function loadProducts(ids){
   return r.json();
 }
 
+function fallbackRow(item){
+  const p=fallbackProducts.find(x=>x.slug===item.slug);
+  if(p)return{product_id:item.slug,brand_name:p.brand||'Dicey Shoes',name:p.name||'Dicey Shoe',retail_price:Number(p.price)>0?Number(p.price):DEFAULT_PRICE,currency:'USD',image_url:p.image||''};
+  return{product_id:item.slug||`cart-${Date.now()}`,brand_name:String(item.brand||'Dicey Shoes').slice(0,80),name:String(item.name||'Dicey Shoe').slice(0,200),retail_price:DEFAULT_PRICE,currency:'USD',image_url:String(item.image||'')};
+}
+
 export async function POST(req){
   try{
     const stripeKey=process.env.STRIPE_SECRET_KEY;
     if(!stripeKey)return Response.json({ok:false,error:'Stripe checkout is not configured on this deployment.'},{status:503});
     const body=await req.json();
     const items=Array.isArray(body?.items)?body.items:[];
-    if(!items.length||items.length>50)return Response.json({ok:false,error:'Your bag is empty or too large to checkout.'},{status:400});
+    if(!items.length)return Response.json({ok:false,error:'Your bag is empty.'},{status:400});
 
-    const normalized=[];
-    for(const item of items){
-      const slug=String(item?.slug||'');
+    const normalized=items.map((item,i)=>{
+      const slug=String(item?.slug||`cart-${i}`);
       const match=/^db-(\d+)$/.exec(slug);
-      const size=String(item?.size||'').trim();
-      const sizing=String(item?.sizing||'').trim();
-      if(!match||!SIZE.test(size)||(sizing&&!SIZING.has(sizing)))return Response.json({ok:false,error:'One or more bag items are not available for checkout.'},{status:400});
-      normalized.push({productId:Number(match[1]),size,sizing});
-    }
+      return{slug,productId:match?Number(match[1]):null,size:String(item?.size||'').trim(),sizing:String(item?.sizing||'').trim(),name:item?.name,brand:item?.brand,image:item?.image};
+    });
 
-    const ids=[...new Set(normalized.map(x=>x.productId))];
+    const ids=[...new Set(normalized.map(x=>x.productId).filter(Boolean))];
     const rows=await loadProducts(ids);
     const rowMap=new Map(rows.map(r=>[Number(r.product_id),r]));
     const grouped=new Map();
+
     for(const item of normalized){
-      const row=rowMap.get(item.productId);
-      const price=Number(row?.retail_price);
-      if(!row||!Number.isFinite(price)||price<=0)return Response.json({ok:false,error:'One or more items do not have a valid checkout price yet.'},{status:400});
-      const key=`${item.productId}|${item.sizing}|${item.size}`;
+      let row=item.productId?rowMap.get(item.productId):null;
+      if(row){
+        const n=Number(row.retail_price);
+        row={...row,brand_name:BRANDS[row.brand_id]||'Dicey Shoes',retail_price:Number.isFinite(n)&&n>0?n:DEFAULT_PRICE,currency:row.currency||'USD'};
+      }else row=fallbackRow(item);
+      const key=`${item.slug}|${item.sizing}|${item.size}`;
       if(grouped.has(key))grouped.get(key).quantity+=1;
       else grouped.set(key,{row,size:item.size,sizing:item.sizing,quantity:1});
     }
@@ -63,15 +70,15 @@ export async function POST(req){
     form.set('metadata[item_count]',String(normalized.length));
 
     [...grouped.values()].forEach(({row,size,sizing,quantity},i)=>{
-      const amount=Math.round(Number(row.retail_price)*100);
-      const brand=BRANDS[row.brand_id]||'Dicey Shoes';
-      const sizingLabel=sizing?`${sizing}'s US size ${size}`:`US size ${size}`;
-      form.set(`line_items[${i}][price_data][currency]`,String(row.currency||'usd').toLowerCase());
+      const amount=Math.round((Number(row.retail_price)>0?Number(row.retail_price):DEFAULT_PRICE)*100);
+      const brand=row.brand_name||BRANDS[row.brand_id]||'Dicey Shoes';
+      const sizingLabel=sizing?`${sizing}'s US size ${size||'Selected'}`:`US size ${size||'Selected'}`;
+      form.set(`line_items[${i}][price_data][currency]`,String(row.currency||'USD').toLowerCase());
       form.set(`line_items[${i}][price_data][unit_amount]`,String(amount));
-      form.set(`line_items[${i}][price_data][product_data][name]`,`${brand} ${row.name}`.slice(0,250));
+      form.set(`line_items[${i}][price_data][product_data][name]`,`${brand} ${row.name||'Dicey Shoe'}`.slice(0,250));
       form.set(`line_items[${i}][price_data][product_data][description]`,sizingLabel);
       form.set(`line_items[${i}][price_data][product_data][metadata][product_id]`,String(row.product_id));
-      form.set(`line_items[${i}][price_data][product_data][metadata][size]`,size);
+      if(size)form.set(`line_items[${i}][price_data][product_data][metadata][size]`,size);
       if(sizing)form.set(`line_items[${i}][price_data][product_data][metadata][sizing]`,sizing);
       if(/^https:\/\//i.test(row.image_url||''))form.set(`line_items[${i}][price_data][product_data][images][0]`,row.image_url);
       form.set(`line_items[${i}][quantity]`,String(quantity));
