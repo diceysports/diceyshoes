@@ -42,9 +42,8 @@ export async function POST(req){
     const grouped=new Map();
     for(const item of normalized){
       const row=rowMap.get(item.productId);
-      const reference=row&&(row.image_usage==='REFERENCE_ONLY'||/KicksDB|SneakerMarket/i.test(row.source_name||''));
       const price=Number(row?.retail_price);
-      if(!row||reference||!Number.isFinite(price)||price<=0)return Response.json({ok:false,error:'One or more items are catalog-only or do not have a confirmed checkout price.'},{status:400});
+      if(!row||!Number.isFinite(price)||price<=0)return Response.json({ok:false,error:'One or more items do not have a valid checkout price yet.'},{status:400});
       const key=`${item.productId}|${item.sizing}|${item.size}`;
       if(grouped.has(key))grouped.get(key).quantity+=1;
       else grouped.set(key,{row,size:item.size,sizing:item.sizing,quantity:1});
