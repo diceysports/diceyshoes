@@ -10,7 +10,7 @@ export default function CartPage(){
   const[busy,setBusy]=useState(false);
   useEffect(()=>{if(typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('checkout')==='cancelled')setCMsg('Checkout was cancelled. Your bag is still here.')},[]);
   const total=cart.reduce((s,x)=>s+(Number(x.price)||0),0);
-  const blocked=cart.some(x=>x.price==null||x.referenceOnly);
+  const blocked=cart.some(x=>x.price==null||!Number.isFinite(Number(x.price))||Number(x.price)<=0);
 
   async function checkout(){
     if(!cart.length||blocked)return;
@@ -29,7 +29,7 @@ export default function CartPage(){
       <div className="cartitems">
         {cart.map(x=><div className="cartitem" key={x.id}>
           <Link href={'/product/'+x.slug} className="cartpic"><img src={x.image} alt={x.name}/></Link>
-          <div className="cartcopy"><b>{x.brand}</b><Link href={'/product/'+x.slug}><h3>{x.name}</h3></Link><p>{x.sizing?`${x.sizing}'s US size ${x.size}`:`US size ${x.size}`}</p><strong>{x.price==null?'PRICE TBD':money(x.price)}</strong>{x.referenceOnly&&<small>Catalog-only item</small>}</div>
+          <div className="cartcopy"><b>{x.brand}</b><Link href={'/product/'+x.slug}><h3>{x.name}</h3></Link><p>{x.sizing?`${x.sizing}'s US size ${x.size}`:`US size ${x.size}`}</p><strong>{x.price==null?'PRICE TBD':money(x.price)}</strong></div>
           <button onClick={()=>remove(x.id)} aria-label={`Remove ${x.name}`}>Remove</button>
         </div>)}
         {!cart.length&&<div className="empty">Your bag is empty. <Link href="/shop">Shop shoes →</Link></div>}
@@ -39,7 +39,7 @@ export default function CartPage(){
         <div className="summaryLine"><span>Subtotal</span><b>{money(total)}</b></div>
         <div className="summaryLine"><span>Shipping</span><span>Address collected at checkout</span></div>
         <p>Final payment is completed securely on Stripe. Taxes, if applicable, are handled according to your checkout and local requirements.</p>
-        {blocked&&<div className="cartWarning">Remove any PRICE TBD or catalog-only item before checkout.</div>}
+        {blocked&&<div className="cartWarning">This item needs a valid price before checkout.</div>}
         {cMsg&&<div className="cartMessage" role="status">{cMsg}</div>}
         <button className="btn v wide" disabled={!cart.length||blocked||busy} onClick={checkout}>{busy?'OPENING STRIPE…':'SECURE CHECKOUT'}</button>
         <div className="checkoutTrust">Secure payment powered by Stripe · shipping address collected during checkout.</div>
