@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        brand: ['Mizuno','Onitsuka Tiger','Under Armour','HOKA','Saucony','On','Reebok','Salomon']
+        brand: ['Mizuno','Under Armour','HOKA','Saucony','On','Reebok','Salomon','Puma','ASICS','New Balance','Vans','Converse']
         shard: [0,1,2,3,4,5]
     runs-on: ubuntu-latest
     timeout-minutes: 55
