@@ -1,0 +1,52 @@
+name: Supplier Yupoo gallery enrichment
+on:
+  push:
+    branches:
+      - claude/diceyshoes-setup-deploy-n3gzy4
+    paths:
+      - '.github/workflows/supplier-yupoo-gallery-batch.yml'
+      - 'scripts/supplier-yupoo-gallery-batch.mjs'
+      - 'data/supplier-yupoo-sources.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  crawl:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        source_shard: [0,1,2,3,4,5,6,7]
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      SOURCE_SHARD: ${{ matrix.source_shard }}
+      SOURCE_SHARDS: 8
+      MAX_PAGES: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/supplier-yupoo-gallery-batch.mjs
+      - name: Import exact-match supplier galleries
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE="supplier-yupoo-gallery-${SOURCE_SHARD}.json"
+          OIDC_JSON="$(curl -fsSL -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dicey-shoes-enrichment")"
+          OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).value))")"
+          curl -fsS --max-time 240 \
+            -X POST 'https://mmazwydwswrkqgisotyt.supabase.co/functions/v1/shoe-supplier-gallery-import' \
+            -H 'content-type: application/json' \
+            -H "Authorization: Bearer ${OIDC_TOKEN}" \
+            --data-binary "@${FILE}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: supplier-yupoo-${{ matrix.source_shard }}
+          path: supplier-yupoo-gallery-*.json
+          retention-days: 5
