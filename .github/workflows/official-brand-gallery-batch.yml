@@ -16,10 +16,9 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        # HOKA and On are temporarily excluded: exact-SKU browser pass returned zero matches.
-        # Keep only sources that are still producing safe, exact-product candidates.
-        brand: ['Mizuno','Under Armour','Saucony','Reebok','Salomon','Puma','ASICS','New Balance','Vans','Converse']
-        shard: [0,1,2,3,4,5]
+        # Current productive exact-SKU sources only. Other brands are paused after zero-new-image passes.
+        brand: ['Under Armour','Puma']
+        shard: [0,1,2,3]
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
