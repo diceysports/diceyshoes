@@ -46,8 +46,19 @@ async function inspectPage(page,p,url){const network=[];const onResponse=async r
 async function discover(page,p){const starts=cfg.search(clean(p.style_code));for(const start of starts){let res;try{res=await page.goto(start,{waitUntil:'domcontentloaded',timeout:30000})}catch{continue}if(!res||res.status()>=500)continue;await page.waitForTimeout(900);const here=await inspectPage(page,p,page.url());if(here)return here;const links=await page.locator('a[href]').evaluateAll(els=>els.map(a=>({href:a.href,text:(a.textContent||'').trim()})).filter(x=>/^https?:/i.test(x.href)));const candidates=links.filter(x=>sameBrandUrl(x.href)).map(x=>({...x,score:candidateScore(x.href,x.text,p)})).filter(x=>x.score>10).sort((a,b)=>b.score-a.score);const seen=new Set();for(const c of candidates){const key=c.href.split('#')[0];if(seen.has(key))continue;seen.add(key);const found=await inspectPage(page,p,key);if(found)return found;if(seen.size>=6)break}}
  return null}
 
+async function verifiedCounts(productIds){
+  const counts=new Map();
+  for(let i=0;i<productIds.length;i+=100){
+    const ids=productIds.slice(i,i+100);
+    if(!ids.length)continue;
+    const rows=await get(`shoe_storefront_media?select=master_product_id&master_product_id=in.(${ids.join(',')})&limit=5000`);
+    for(const m of rows)counts.set(Number(m.master_product_id),(counts.get(Number(m.master_product_id))||0)+1);
+  }
+  return counts;
+}
+
 let products=await get(`shoe_products?select=product_id,name,model,style_code,gender,category,colorway&brand_id=eq.${cfg.id}&status=eq.PUBLISHED&order=product_id.asc`);
-try{const media=await get('shoe_storefront_media?select=master_product_id&limit=20000');const counts=new Map();for(const m of media)counts.set(Number(m.master_product_id),(counts.get(Number(m.master_product_id))||0)+1);products=products.filter(p=>(counts.get(Number(p.product_id))||0)<4)}catch(e){console.log('media view unavailable; crawling all style-coded products')}
+try{const counts=await verifiedCounts(products.map(p=>Number(p.product_id)));products=products.filter(p=>(counts.get(Number(p.product_id))||0)<4)}catch(e){console.log('scoped media view unavailable; crawling all style-coded products',String(e))}
 const crawlable=products.filter(p=>clean(p.style_code));const targets=crawlable.slice(SHARD*SHARD_SIZE,(SHARD+1)*SHARD_SIZE);
 const browser=await chromium.launch({headless:true});const context=await browser.newContext({viewport:{width:1280,height:900},userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'});const page=await context.newPage();const results=[],misses=[];
 for(let i=0;i<targets.length;i++){const p=targets[i];let found=null;try{found=await discover(page,p)}catch(e){console.log('ERR',p.product_id,String(e))}if(found){results.push(found);console.log(`[${i+1}/${targets.length}] ${BRAND} ${p.product_id} ${p.style_code}: ${found.images.length} images`)}else{misses.push({productId:p.product_id,name:p.name,styleCode:p.style_code});console.log(`[${i+1}/${targets.length}] ${BRAND} ${p.product_id} ${p.style_code}: MISS`)}}
