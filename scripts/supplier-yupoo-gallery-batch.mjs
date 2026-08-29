@@ -15,33 +15,53 @@ function pageUrl(base,n){const u=new URL(base);u.searchParams.set('page',String(
 function codeCandidates(s){return [...new Set(clean(s).toUpperCase().match(/[A-Z0-9][A-Z0-9-]{4,}/g)||[])].map(norm).filter(x=>x.length>=5)}
 function imageUrlOK(u){try{const x=new URL(u),h=x.hostname.toLowerCase(),p=x.pathname.toLowerCase();return x.protocol==='https:'&&(h==='photo.yupoo.com'||h.endsWith('.yupoo.com')||h==='x.zhidian-inc.cn'||h.endsWith('.zhidian-inc.cn')||h.endsWith('.alicdn.com'))&&!/avatar|logo|icon|sprite|banner|qr|qrcode/.test(p)}catch{return false}}
 function canonical(u){try{const x=new URL(u);['w','h','width','height','q','quality'].forEach(k=>x.searchParams.delete(k));return x.origin+x.pathname}catch{return u}}
-const STOP=new Set(['NIKE','ADIDAS','JORDAN','AIR','SHOE','SHOES','SNEAKER','SNEAKERS','MENS','MEN','WOMENS','WOMEN','WMNS','UNISEX','NEW','SIZE','SIZES','FLIGHT','CLUB','EBAY','STOCKX','GOAT','AUTHENTIC','ORIGINAL','RETRO','LOW','MID','HIGH','PRO','SP']);
+
+const NAME_STOP=new Set(['NIKE','ADIDAS','JORDAN','PUMA','ASICS','SHOE','SHOES','SNEAKER','SNEAKERS','MENS','MEN','WOMENS','WOMEN','WMNS','UNISEX','NEW','SIZE','SIZES','FLIGHT','CLUB','EBAY','STOCKX','GOAT','AUTHENTIC','ORIGINAL','RETRO','PRO','SP']);
+const MODEL_STOP=new Set(['NIKE','ADIDAS','JORDAN','PUMA','ASICS','SHOE','SHOES','SNEAKER','SNEAKERS','MENS','MEN','WOMENS','WOMEN','WMNS','UNISEX']);
+const KNOWN_BRANDS=['NIKE','ADIDAS','JORDAN','PUMA','ASICS','NEW BALANCE','REEBOK','VANS','CONVERSE','SAUCONY','HOKA','SALOMON','MIZUNO','UNDER ARMOUR'];
+const GENERIC_COLORS=new Set(['BLACK','WHITE','RED','BLUE','GREEN','GREY','GRAY','BROWN','TAN','CREAM','GOLD','SILVER','PINK','PURPLE','ORANGE','YELLOW','MULTI','MULTICOLOR']);
 function words(s){return clean(s).toUpperCase().replace(/[^A-Z0-9]+/g,' ').split(/\s+/).filter(Boolean)}
-function meaningfulWords(s,style=''){const sc=norm(style);return [...new Set(words(s).filter(w=>w.length>=3&&!STOP.has(w)&&norm(w)!==sc&&!/^\d+$/.test(w)&&!/^\d+(?:\.\d+)?$/.test(w)))];}
+function unique(arr){return [...new Set(arr)]}
+function modelWords(s){return unique(words(s).filter(w=>w.length>=2&&!MODEL_STOP.has(w)));}
+function descriptiveWords(s,style=''){const sc=norm(style);return unique(words(s).filter(w=>w.length>=3&&!NAME_STOP.has(w)&&norm(w)!==sc&&!/^\d+(?:\.\d+)?$/.test(w)));}
 function sourceWords(s){return new Set(words(s));}
 function allPresent(required,have){return required.length>0&&required.every(w=>have.has(w));}
+function explicitBrand(title){const up=clean(title).toUpperCase();return KNOWN_BRANDS.find(b=>new RegExp(`(^|[^A-Z0-9])${b.replace(' ','\\s+')}([^A-Z0-9]|$)`,'i').test(up))||null;}
+function brandCompatible(title,p){const b=explicitBrand(title);if(!b)return true;const pb=clean(p.brand_name).toUpperCase();if(b==='JORDAN')return pb==='JORDAN'||pb==='NIKE';if(pb==='JORDAN'&&b==='NIKE')return true;return pb===b;}
 function productNameProfile(p){
-  const model=meaningfulWords(p.model||'',p.style_code);
-  const color=meaningfulWords(p.colorway||'',p.style_code);
-  const name=meaningfulWords(p.name||'',p.style_code).filter(w=>!model.includes(w)&&!color.includes(w));
-  return {model,color,name};
+  const model=modelWords(p.model||'');
+  const color=descriptiveWords(p.colorway||'',p.style_code);
+  const brandWords=descriptiveWords(p.brand_name||'',p.style_code);
+  const rawName=descriptiveWords(p.name||'',p.style_code);
+  const variant=rawName.filter(w=>!model.includes(w)&&!color.includes(w)&&!brandWords.includes(w)&&!GENERIC_COLORS.has(w));
+  return {model,color,variant};
 }
 function nameMatchCandidates(sourceTitle,products){
   const have=sourceWords(sourceTitle), out=[];
   for(const p of products){
+    if(!brandCompatible(sourceTitle,p))continue;
     const pr=p._profile;
-    if(pr.model.length===0||!allPresent(pr.model,have))continue;
-    if(pr.color.length>0&&!allPresent(pr.color,have))continue;
-    const matchedName=pr.name.filter(w=>have.has(w));
-    const needed=pr.name.length<=2?pr.name.length:Math.max(2,Math.ceil(pr.name.length*0.7));
-    if(matchedName.length<needed)continue;
-    const evidence=[...pr.model,...pr.color,...matchedName];
-    if(new Set(evidence).size<3)continue;
-    out.push({p,score:pr.model.length*20+pr.color.length*30+matchedName.length*10,evidence});
+    if(pr.model.length<1||!allPresent(pr.model,have))continue;
+    const nonGenericColor=pr.color.filter(w=>!GENERIC_COLORS.has(w));
+    const genericColor=pr.color.filter(w=>GENERIC_COLORS.has(w));
+    if(nonGenericColor.length>0&&!allPresent(nonGenericColor,have))continue;
+    if(nonGenericColor.length===0&&genericColor.length>0&&!allPresent(genericColor,have))continue;
+    const matchedVariant=pr.variant.filter(w=>have.has(w));
+    const distinctModel=pr.model.filter(w=>!/^[0-9]+$/.test(w));
+    const strongVariant=matchedVariant.filter(w=>w.length>=4);
+    const styleInTitle=norm(p.style_code).length>=5&&norm(sourceTitle).includes(norm(p.style_code));
+    const colorEvidence=pr.color.length>0&&pr.color.every(w=>have.has(w));
+    const variantNeeded=styleInTitle?0:(colorEvidence?1:2);
+    if(strongVariant.length<variantNeeded)continue;
+    const evidence=unique([...pr.model,...pr.color,...strongVariant]);
+    if(!styleInTitle&&distinctModel.length<1)continue;
+    if(!styleInTitle&&new Set(evidence).size<3)continue;
+    const score=(styleInTitle?500:0)+pr.model.length*35+pr.color.length*45+strongVariant.length*20;
+    out.push({p,score,evidence,styleInTitle});
   }
   out.sort((a,b)=>b.score-a.score);
   if(!out.length)return null;
-  if(out.length>1&&out[0].score===out[1].score)return null;
+  if(out.length>1&&(out[0].score-out[1].score)<20)return null;
   return out[0];
 }
 async function unlock(page,password){if(!password)return;const inputs=page.locator('input[type="password"], input[name*="pass" i]');if(await inputs.count()){await inputs.first().fill(password).catch(()=>{});const btn=page.locator('button, input[type="submit"]').filter({hasText:/enter|submit|confirm|访问|确定/i}).first();if(await btn.count())await btn.click().catch(()=>{});else await page.keyboard.press('Enter').catch(()=>{});await page.waitForTimeout(1000)}}
