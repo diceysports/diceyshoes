@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        # Current productive exact-SKU sources only. Other brands are paused after zero-new-image passes.
+        # Current productive exact-SKU sources only. Re-run current thin front after GOAT safety cleanup.
         brand: ['Under Armour','Puma']
         shard: [0,1,2,3]
     runs-on: ubuntu-latest
