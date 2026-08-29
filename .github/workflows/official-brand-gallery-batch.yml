@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        # Continue rolling the productive exact-SKU thin front after the latest verified imports.
+        # Continue the verified exact-SKU Puma/Under Armour thin front after the latest completed products drop out.
         brand: ['Under Armour','Puma']
         shard: [0,1,2,3]
     runs-on: ubuntu-latest
