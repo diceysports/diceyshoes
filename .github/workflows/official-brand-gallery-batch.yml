@@ -45,11 +45,25 @@ jobs:
           FILE="official-gallery-${BRAND_SLUG}-${SHARD}.json"
           OIDC_JSON="$(curl -fsSL -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dicey-shoes-enrichment")"
           OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).value))")"
-          curl -fsS --max-time 240 \
-            -X POST 'https://mmazwydwswrkqgisotyt.supabase.co/functions/v1/shoe-official-gallery-import' \
-            -H 'content-type: application/json' \
-            -H "Authorization: Bearer ${OIDC_TOKEN}" \
-            --data-binary "@${FILE}"
+          node - "$FILE" <<'NODE'
+          const fs=require('fs');
+          const file=process.argv[2];
+          const data=JSON.parse(fs.readFileSync(file,'utf8'));
+          const list=Array.isArray(data.results)?data.results:[];
+          if(!list.length){fs.writeFileSync('official-import-0.json',JSON.stringify({results:[]}));process.exit(0)}
+          for(let i=0;i<list.length;i+=10){
+            fs.writeFileSync(`official-import-${Math.floor(i/10)}.json`,JSON.stringify({results:list.slice(i,i+10)}));
+          }
+          NODE
+          for PART in official-import-*.json; do
+            echo "Importing $PART"
+            curl -fsS --retry 3 --retry-delay 3 --retry-all-errors --max-time 180 \
+              -X POST 'https://mmazwydwswrkqgisotyt.supabase.co/functions/v1/shoe-official-gallery-import' \
+              -H 'content-type: application/json' \
+              -H "Authorization: Bearer ${OIDC_TOKEN}" \
+              --data-binary "@${PART}"
+            echo
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
