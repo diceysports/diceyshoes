@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/official-brand-gallery-batch.yml'
       - 'scripts/official-brand-gallery-batch.mjs'
+      - 'scripts/filter-under-armour-gallery.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -33,6 +34,9 @@ jobs:
       - run: npm install --no-save playwright@1.55.0
       - run: npx playwright install --with-deps chromium
       - run: node scripts/official-brand-gallery-batch.mjs
+      - name: Enforce exact Under Armour colorway
+        if: matrix.brand == 'Under Armour'
+        run: node scripts/filter-under-armour-gallery.mjs
       - name: Import verified official galleries
         shell: bash
         run: |
@@ -40,7 +44,10 @@ jobs:
           BRAND_SLUG="$(printf '%s' "$BRAND" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-|-$//g')"
           FILE="official-gallery-${BRAND_SLUG}-${SHARD}.json"
           OIDC_JSON="$(curl -fsSL -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dicey-shoes-enrichment")"
-          OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).value))")"
+          OIDC_TOKEN="$(printf '%s' "$OIDIDC_JSON" 2>/dev/null || true)"
+          if [ -z "$OIDC_TOKEN" ]; then
+            OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).value))")"
+          fi
           curl -fsS --max-time 240 \
             -X POST 'https://mmazwydwswrkqgisotyt.supabase.co/functions/v1/shoe-official-gallery-import' \
             -H 'content-type: application/json' \
