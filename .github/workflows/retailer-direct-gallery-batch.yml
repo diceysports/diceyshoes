@@ -16,8 +16,15 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        provider: ['STOCKX','FARFETCH','STADIUM','SSENSE']
-        shard: [0,1,2,3]
+        include:
+          - { provider: FARFETCH, shard: 4 }
+          - { provider: FARFETCH, shard: 5 }
+          - { provider: FARFETCH, shard: 6 }
+          - { provider: FARFETCH, shard: 7 }
+          - { provider: FARFETCH, shard: 8 }
+          - { provider: FARFETCH, shard: 9 }
+          - { provider: FARFETCH, shard: 10 }
+          - { provider: FARFETCH, shard: 11 }
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
