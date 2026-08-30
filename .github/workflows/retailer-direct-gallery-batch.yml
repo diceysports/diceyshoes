@@ -1,4 +1,5 @@
 name: Verified retailer direct-page gallery enrichment
+# Rolling Farfetch pass 2026-08-30T13:11Z; exact linked page + exact style verification only.
 on:
   push:
     branches:
