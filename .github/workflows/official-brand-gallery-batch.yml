@@ -17,8 +17,8 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        # Reebok yielded verified exact-SKU galleries in the prior pass. Also test the next supported thin official pools.
-        brand: ['Reebok','Converse','ASICS','Mizuno']
+        # Reebok remains productive; rotate the next supported thin exact-SKU official pools.
+        brand: ['Reebok','Saucony','Salomon','Vans']
         shard: [0,1,2,3]
     runs-on: ubuntu-latest
     timeout-minutes: 55
