@@ -1,4 +1,5 @@
 name: Sparse retailer exact-page enrichment
+# Safe sparse pass: only exact catalog-linked product pages are eligible.
 on:
   push:
     branches:
