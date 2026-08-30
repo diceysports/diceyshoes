@@ -17,7 +17,7 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          # StockX affiliate links are now canonicalized to the linked direct product page before crawling.
+          # StockX affiliate links are canonicalized to their linked direct product page; importer verifies canonical equivalence back to the exact catalog product.
           - { provider: STOCKX, shard: 0, shard_size: 25 }
           - { provider: STOCKX, shard: 1, shard_size: 25 }
           - { provider: STOCKX, shard: 2, shard_size: 25 }
