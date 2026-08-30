@@ -1,5 +1,5 @@
 name: Official brand gallery enrichment
-# Rolling exact-SKU official pass 2026-08-30T19:27Z. Onitsuka Tiger remains paused after repeated ~3-minute exact-SKU misses caused 55-minute shard timeouts.
+# Rolling exact-SKU official pass 2026-08-30T20:30Z. Onitsuka Tiger remains paused after repeated ~3-minute exact-SKU misses caused 55-minute shard timeouts.
 on:
   push:
     branches:
@@ -19,7 +19,6 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          # Use current thin fronts from supported sources that do not exhibit the Onitsuka timeout pattern.
           - { brand: 'Reebok', shard: 0 }
           - { brand: 'Saucony', shard: 0 }
           - { brand: 'Salomon', shard: 0 }
@@ -55,9 +54,7 @@ jobs:
           const data=JSON.parse(fs.readFileSync(file,'utf8'));
           const list=Array.isArray(data.results)?data.results:[];
           if(!list.length){fs.writeFileSync('official-import-0.json',JSON.stringify({results:[]}));process.exit(0)}
-          for(let i=0;i<list.length;i+=10){
-            fs.writeFileSync(`official-import-${Math.floor(i/10)}.json`,JSON.stringify({results:list.slice(i,i+10)}));
-          }
+          for(let i=0;i<list.length;i+=10){fs.writeFileSync(`official-import-${Math.floor(i/10)}.json`,JSON.stringify({results:list.slice(i,i+10)}));}
           NODE
           for PART in official-import-*.json; do
             echo "Importing $PART"
