@@ -1,5 +1,5 @@
 name: GOAT exact-SKU gallery enrichment
-# Safe rolling pass 2: rerun current thin exact-page target front after four newly verified products.
+# Safe rolling pass: only catalog-linked GOAT pages and exact SKU assets are eligible.
 on:
   push:
     branches:
