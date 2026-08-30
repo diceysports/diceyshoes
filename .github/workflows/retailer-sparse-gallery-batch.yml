@@ -14,15 +14,15 @@ jobs:
   crawl:
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 4
       matrix:
         include:
-          - provider: STOCKX
-            shard: 0
-            shard_size: 25
-          - provider: STADIUM
-            shard: 0
-            shard_size: 25
+          # StockX affiliate links are now canonicalized to the linked direct product page before crawling.
+          - { provider: STOCKX, shard: 0, shard_size: 25 }
+          - { provider: STOCKX, shard: 1, shard_size: 25 }
+          - { provider: STOCKX, shard: 2, shard_size: 25 }
+          - { provider: STOCKX, shard: 3, shard_size: 25 }
+          - { provider: STADIUM, shard: 0, shard_size: 25 }
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
