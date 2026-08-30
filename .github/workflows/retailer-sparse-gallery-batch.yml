@@ -1,6 +1,6 @@
 name: Sparse retailer exact-page enrichment
 # Safe sparse pass: only exact catalog-linked product pages are eligible.
-# Rolling pass 2026-08-30T19:22Z after 104 new verified StockX images across 7 exact products in the recent window.
+# Rolling pass 2026-08-30T20:30Z after 46 new verified StockX images across 3 exact products in the last 75 minutes.
 on:
   push:
     branches:
@@ -18,7 +18,6 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          # StockX affiliate links are canonicalized to their linked direct product page; importer verifies canonical equivalence back to the exact catalog product.
           - { provider: STOCKX, shard: 0, shard_size: 25 }
           - { provider: STOCKX, shard: 1, shard_size: 25 }
           - { provider: STOCKX, shard: 2, shard_size: 25 }
