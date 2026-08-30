@@ -1,5 +1,6 @@
 name: Sparse retailer exact-page enrichment
 # Safe sparse pass: only exact catalog-linked product pages are eligible.
+# Rolling pass 2026-08-30T13:11Z after verified StockX exact-page wins.
 on:
   push:
     branches:
