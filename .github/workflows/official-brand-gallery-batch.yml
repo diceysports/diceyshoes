@@ -1,5 +1,5 @@
 name: Official brand gallery enrichment
-# Rolling exact-SKU official pass 2026-08-30T20:30Z. Onitsuka Tiger remains paused after repeated ~3-minute exact-SKU misses caused 55-minute shard timeouts.
+# Rolling exact-SKU official pass 2026-08-30T22:28Z. Onitsuka Tiger remains paused after repeated ~3-minute exact-SKU misses caused 55-minute shard timeouts.
 on:
   push:
     branches:
