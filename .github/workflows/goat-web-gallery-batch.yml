@@ -15,9 +15,10 @@ jobs:
   crawl:
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 1
       matrix:
-        shard: [0,1,2,3]
+        # Previous shards 0-3 covered the first 100 of 108 strict eligible targets; inspect only the remaining tail.
+        shard: [4]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
