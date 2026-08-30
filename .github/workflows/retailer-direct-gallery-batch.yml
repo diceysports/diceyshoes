@@ -17,7 +17,7 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          # Roll the next exact-page Farfetch thin front after three more products reached four verified views.
+          # Roll the next exact-page Farfetch thin front after the prior four-shard batch completed cleanly.
           - { provider: FARFETCH, shard: 0 }
           - { provider: FARFETCH, shard: 1 }
           - { provider: FARFETCH, shard: 2 }
