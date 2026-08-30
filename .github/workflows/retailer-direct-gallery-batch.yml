@@ -1,5 +1,5 @@
 name: Verified retailer direct-page gallery enrichment
-# Rolling Farfetch pass 2026-08-30T18:13Z; exact linked page + exact style verification only.
+# Rolling Farfetch pass 2026-08-30T20:30Z; exact linked page + exact style verification only.
 on:
   push:
     branches:
@@ -18,7 +18,6 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          # Roll the current exact-page Farfetch thin front; completed products fall out automatically.
           - { provider: FARFETCH, shard: 0 }
           - { provider: FARFETCH, shard: 1 }
           - { provider: FARFETCH, shard: 2 }
