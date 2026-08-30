@@ -17,7 +17,7 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          # Continue the current exact-page Farfetch thin front while verified imports are still landing.
+          # Roll the exact-page Farfetch thin front again after the latest verified imports landed.
           - { provider: FARFETCH, shard: 0 }
           - { provider: FARFETCH, shard: 1 }
           - { provider: FARFETCH, shard: 2 }
