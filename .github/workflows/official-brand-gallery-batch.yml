@@ -1,4 +1,5 @@
 name: Official brand gallery enrichment
+# Rolling exact-SKU official pass 2026-08-30T16:31Z.
 on:
   push:
     branches:
