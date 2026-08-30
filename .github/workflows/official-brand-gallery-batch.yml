@@ -17,9 +17,15 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        # Rotate toward large remaining exact-SKU thin pools, including the color-safeguarded UA path.
-        brand: ['Under Armour','Reebok','Saucony','Salomon']
-        shard: [0,1,2,3]
+        include:
+          # Cover the large untried Onitsuka Tiger exact-SKU thin pool plus Saucony's remaining tail.
+          - { brand: 'Onitsuka Tiger', shard: 0 }
+          - { brand: 'Onitsuka Tiger', shard: 1 }
+          - { brand: 'Onitsuka Tiger', shard: 2 }
+          - { brand: 'Onitsuka Tiger', shard: 3 }
+          - { brand: 'Onitsuka Tiger', shard: 4 }
+          - { brand: 'Onitsuka Tiger', shard: 5 }
+          - { brand: 'Saucony', shard: 4 }
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
