@@ -17,7 +17,7 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          # Roll the next exact-page Farfetch thin front after the prior four shards completed cleanly.
+          # Roll the next exact-page Farfetch thin front after three more products reached four verified views.
           - { provider: FARFETCH, shard: 0 }
           - { provider: FARFETCH, shard: 1 }
           - { provider: FARFETCH, shard: 2 }
@@ -42,7 +42,7 @@ jobs:
           set -euo pipefail
           FILE="retailer-$(printf '%s' "$PROVIDER" | tr '[:upper:]' '[:lower:]')-${SHARD}.json"
           OIDC_JSON="$(curl -fsSL -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dicey-shoes-enrichment")"
-          OIDC_TOKEN="$(printf '%s' "$OIDC_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).value))")"
+          OIDC_TOKEN="$(printf '%s' "$OIDIDC_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).value))")"
           curl -fsS --max-time 240 \
             -X POST 'https://mmazwydwswrkqgisotyt.supabase.co/functions/v1/shoe-market-gallery-import' \
             -H 'content-type: application/json' \
