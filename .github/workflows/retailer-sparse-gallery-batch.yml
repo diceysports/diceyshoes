@@ -1,5 +1,5 @@
 name: Sparse retailer exact-page enrichment
-# Safe sparse pass 2026-08-31T11:22Z after 80 verified StockX images across 7 exact products in the last three hours; exact-product safeguards unchanged.
+# Safe sparse pass 2026-08-31T12:18Z after 126 verified StockX images across 11 exact products in the last three hours; exact-product safeguards unchanged.
 on:
   push:
     branches:
