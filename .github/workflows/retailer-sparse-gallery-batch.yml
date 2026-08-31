@@ -1,5 +1,5 @@
 name: Sparse retailer exact-page enrichment
-# Safe sparse pass 2026-08-31T16:28Z; exact-product safeguards unchanged.
+# Safe sparse pass 2026-08-31T17:16Z; exact-product safeguards unchanged.
 on:
   push:
     branches:
@@ -51,6 +51,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: retailer-${{ matrix.PROVIDER }}-${{ matrix.SHARD }}
+          name: retailer-${{ matrix.provider }}-${{ matrix.shard }}
           path: retailer-*.json
           retention-days: 3
