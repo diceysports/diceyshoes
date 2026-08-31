@@ -1,5 +1,5 @@
 name: Verified retailer direct-page gallery enrichment
-# Rolling Farfetch pass 2026-08-31T10:20Z after 32 new verified images across 5 exact products in the last three hours; exact linked page + exact style verification only.
+# Rolling Farfetch pass 2026-08-31T11:22Z after 34 new verified images across 7 exact products in the last three hours; exact linked page + exact style verification only.
 on:
   push:
     branches:
