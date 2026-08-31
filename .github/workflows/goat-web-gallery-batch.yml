@@ -1,5 +1,5 @@
 name: GOAT exact-SKU gallery enrichment
-# Safe rolling pass 2026-08-31T12:18Z: only catalog-linked GOAT pages and exact SKU assets are eligible.
+# Safe rolling pass 2026-08-31T13:39Z: only catalog-linked GOAT pages and exact SKU assets are eligible.
 on:
   push:
     branches:
