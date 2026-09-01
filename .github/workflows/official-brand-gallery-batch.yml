@@ -1,5 +1,5 @@
 name: Official brand gallery enrichment
-# Rolling exact-SKU official pass 2026-09-01T14:19Z. Advance to shard 3 after shard 2; Onitsuka Tiger remains paused rather than weakening matching.
+# Rolling exact-SKU official pass 2026-09-01T16:28Z. Rotate away from exhausted Reebok/Saucony/Salomon/Vans shards; keep exact-SKU matching only.
 on:
   push:
     branches:
@@ -19,10 +19,11 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          - { brand: 'Reebok', shard: 3 }
-          - { brand: 'Saucony', shard: 3 }
-          - { brand: 'Salomon', shard: 3 }
-          - { brand: 'Vans', shard: 3 }
+          - { brand: 'HOKA', shard: 0 }
+          - { brand: 'HOKA', shard: 1 }
+          - { brand: 'On', shard: 0 }
+          - { brand: 'Mizuno', shard: 0 }
+          - { brand: 'Under Armour', shard: 0 }
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
