@@ -1,0 +1,19 @@
+.verticalImageStack{position:relative;display:flex;height:100svh;min-height:620px;width:100%;align-items:center;justify-content:center;overflow:hidden;background:#08090d;color:#f8f8f5;isolation:isolate}
+.verticalStackAmbient{pointer-events:none;position:absolute;left:50%;top:50%;width:min(600px,82vw);height:min(600px,82vw);transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.055),rgba(49,87,255,.045) 38%,transparent 72%);filter:blur(48px)}
+.verticalStackCards{position:relative;display:flex;height:500px;width:320px;align-items:center;justify-content:center;perspective:1200px}
+.verticalStackMotionCard{position:absolute;cursor:pointer;will-change:transform,opacity}.verticalStackMotionCard.current{cursor:grab}.verticalStackMotionCard.current:active{cursor:grabbing}
+.verticalStackCard{position:relative;height:420px;width:280px;overflow:hidden;border-radius:28px;background:#16181e;border:1px solid rgba(255,255,255,.12);box-shadow:0 10px 30px -10px rgba(0,0,0,.7)}
+.verticalStackMotionCard.current .verticalStackCard{box-shadow:0 25px 50px -12px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.06)}
+.verticalStackCardGlow{position:absolute;inset:0;z-index:1;border-radius:inherit;background:linear-gradient(to bottom,rgba(255,255,255,.11),transparent 42%);pointer-events:none}
+.verticalStackImage{width:100%!important;height:100%!important;object-fit:cover;user-select:none}
+.verticalStackCardShade{position:absolute;z-index:2;inset:auto 0 0;height:128px;background:linear-gradient(to top,rgba(8,9,13,.68),transparent);pointer-events:none}
+.verticalStackDots{position:absolute;right:32px;top:50%;display:flex;transform:translateY(-50%);flex-direction:column;gap:8px;z-index:8}
+.verticalStackDots button{width:8px;height:8px;padding:0;border:0;border-radius:999px;background:rgba(255,255,255,.3);cursor:pointer;transition:height .3s ease,background .3s ease,transform .2s ease}
+.verticalStackDots button:hover{background:rgba(255,255,255,.55);transform:scale(1.2)}.verticalStackDots button.active{height:24px;background:#f8f8f5}
+.verticalStackHint{position:absolute;bottom:36px;left:50%;z-index:8;display:flex;transform:translateX(-50%);flex-direction:column;align-items:center;gap:8px;color:rgba(255,255,255,.58)}
+.verticalStackHint span{font-size:11px;font-weight:700;letter-spacing:.17em;text-transform:uppercase;white-space:nowrap}
+.verticalStackCounter{position:absolute;left:32px;top:50%;z-index:8;display:flex;transform:translateY(-50%);flex-direction:column;align-items:center}
+.verticalStackCounter span{font-size:38px;font-weight:300;line-height:1;font-variant-numeric:tabular-nums}.verticalStackCounter i{display:block;width:32px;height:1px;margin:10px 0;background:rgba(255,255,255,.22)}.verticalStackCounter small{font-size:14px;color:rgba(255,255,255,.5);font-variant-numeric:tabular-nums}
+@media(max-height:760px){.verticalImageStack{min-height:540px}.verticalStackCards{transform:scale(.85)}.verticalStackHint{bottom:18px}}
+@media(max-width:560px){.verticalImageStack{height:calc(100svh - 76px);min-height:520px}.verticalStackCards{height:440px;width:260px;transform:scale(.86)}.verticalStackCounter{left:14px}.verticalStackCounter span{font-size:27px}.verticalStackCounter i{width:24px}.verticalStackCounter small{font-size:12px}.verticalStackDots{right:14px}.verticalStackHint{bottom:12px}.verticalStackHint svg{width:19px;height:19px}.verticalStackHint span{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.verticalStackHint svg{animation:none!important}.verticalStackMotionCard{transition:none!important}}
