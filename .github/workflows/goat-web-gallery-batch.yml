@@ -1,5 +1,5 @@
 name: GOAT exact-SKU gallery enrichment
-# Safe rolling pass 2026-09-01T22:23Z: only catalog-linked GOAT pages and exact SKU assets are eligible.
+# Safe rolling pass 2026-09-01T23:30Z: only catalog-linked GOAT pages and exact SKU assets are eligible; advance to remaining untested shard.
 on:
   push:
     branches:
@@ -17,8 +17,7 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        # Re-roll the current strict thin front; products that reached four verified views fall out automatically.
-        shard: [0,1,2,3]
+        shard: [4]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
