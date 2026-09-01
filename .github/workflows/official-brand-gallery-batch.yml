@@ -1,5 +1,5 @@
 name: Official brand gallery enrichment
-# Rolling exact-SKU official pass 2026-09-01T16:28Z. Rotate away from exhausted Reebok/Saucony/Salomon/Vans shards; keep exact-SKU matching only.
+# Rolling exact-SKU official pass 2026-09-01T18:21Z. Rotate away from exhausted Reebok/Saucony/Salomon/Vans shards; keep exact-SKU matching only.
 on:
   push:
     branches:
