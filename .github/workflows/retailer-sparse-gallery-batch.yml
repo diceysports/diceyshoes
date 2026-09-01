@@ -1,5 +1,5 @@
 name: Sparse retailer exact-page enrichment
-# Safe sparse pass 2026-09-01T19:31Z; exact-product safeguards unchanged.
+# Safe sparse pass 2026-09-01T21:15Z; exact-product safeguards unchanged.
 on:
   push:
     branches:
