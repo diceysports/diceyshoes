@@ -1,5 +1,5 @@
 name: Verified retailer direct-page gallery enrichment
-# Rolling Farfetch pass 2026-09-01T22:23Z; exact linked page + exact style verification only.
+# Rolling retailer pass 2026-09-01T23:30Z; exact linked page + exact style verification only. Add SSENSE using existing strict provider support.
 on:
   push:
     branches:
@@ -22,6 +22,8 @@ jobs:
           - { provider: FARFETCH, shard: 1 }
           - { provider: FARFETCH, shard: 2 }
           - { provider: FARFETCH, shard: 3 }
+          - { provider: SSENSE, shard: 0 }
+          - { provider: SSENSE, shard: 1 }
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
