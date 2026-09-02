@@ -1,12 +1,6 @@
 name: Verified retailer direct-page gallery enrichment
-# Rolling retailer pass 2026-09-02T00:28Z; exact linked page + exact style verification only. SSENSE paused until exact linked candidates exist.
+# PAUSED: manual dispatch only until enrichment is resumed.
 on:
-  push:
-    branches:
-      - claude/diceyshoes-setup-deploy-n3gzy4
-    paths:
-      - '.github/workflows/retailer-direct-gallery-batch.yml'
-      - 'scripts/retailer-direct-gallery-batch.mjs'
   workflow_dispatch:
 permissions:
   contents: read
