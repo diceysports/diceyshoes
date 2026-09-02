@@ -1,11 +1,6 @@
 name: Brooks official gallery crawl
+# PAUSED: manual dispatch only until enrichment is resumed.
 on:
-  push:
-    branches:
-      - claude/diceyshoes-setup-deploy-n3gzy4
-    paths:
-      - '.github/workflows/brooks-gallery-batch.yml'
-      - 'scripts/brooks-gallery-batch.mjs'
   workflow_dispatch:
 permissions:
   contents: read
