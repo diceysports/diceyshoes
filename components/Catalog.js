@@ -2,6 +2,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import {useSearchParams} from 'next/navigation';
 import {products as fallback} from '../lib/products';
+import {dedupeCatalogProducts} from '../lib/catalog-normalize';
 import ProductCard from './ProductCard';
 
 const PAGE_SIZE=48;
@@ -12,8 +13,8 @@ export default function Catalog({title='SHOP ALL',eyebrow='DICEY SHOES',filter})
   const initial=params.get('q')||'';
   const brand=params.get('brand')||'';
   const initialCategory=params.get('category')||'All';
-  const[q,setQ]=useState(initial),[sort,setSort]=useState('featured'),[category,setCategory]=useState(initialCategory),[products,setProducts]=useState(fallback),[loading,setLoading]=useState(true),[visible,setVisible]=useState(PAGE_SIZE);
-  useEffect(()=>{fetch('/api/catalog').then(r=>r.ok?r.json():null).then(d=>{if(d?.products?.length)setProducts(d.products)}).catch(()=>{}).finally(()=>setLoading(false))},[]);
+  const[q,setQ]=useState(initial),[sort,setSort]=useState('featured'),[category,setCategory]=useState(initialCategory),[products,setProducts]=useState(()=>dedupeCatalogProducts(fallback)),[loading,setLoading]=useState(true),[visible,setVisible]=useState(PAGE_SIZE);
+  useEffect(()=>{fetch('/api/catalog').then(r=>r.ok?r.json():null).then(d=>{if(d?.products?.length)setProducts(dedupeCatalogProducts(d.products))}).catch(()=>{}).finally(()=>setLoading(false))},[]);
   const categories=useMemo(()=>{const present=new Set(products.map(p=>p.category).filter(Boolean));return CATEGORY_ORDER.filter(x=>x==='All'||present.has(x))},[products]);
   const list=useMemo(()=>{
     let x=products.filter(p=>!filter||filter(p)).filter(p=>!brand||p.brand.toLowerCase()===brand.toLowerCase()).filter(p=>category==='All'||p.category===category).filter(p=>(p.brand+' '+p.name+' '+(p.model||'')+' '+(p.category||'')+' '+(p.gender||'')).toLowerCase().includes(q.toLowerCase()));
