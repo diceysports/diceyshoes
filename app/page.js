@@ -9,6 +9,7 @@ import VerticalImageStack from '../components/VerticalImageStack';
 import HomepageNav from '../components/HomepageNav';
 import useLiveReleases from '../components/useLiveReleases';
 import {products as fallback,money} from '../lib/products';
+import {dedupeCatalogProducts,randomCatalogProducts} from '../lib/catalog-normalize';
 
 const BAD_IMAGE=/(ebayimg\.com|flightclub\.com|flightclub|\/TEMPLATE\/|placeholder|logo[-_.])/i;
 const DARK_SHOE=/\b(black|onyx|triple black|black cat|anthracite|dark|noir|shadow)\b/i;
@@ -32,16 +33,16 @@ const randomSpotlight=(items,count=12)=>{
 };
 
 export default function Home(){
-  const[products,setProducts]=useState(fallback.filter(valid));
-  const[shuffled,setShuffled]=useState(fallback.filter(valid));
+  const initialProducts=dedupeCatalogProducts(fallback.filter(valid));
+  const[products,setProducts]=useState(initialProducts);
+  const[shuffled,setShuffled]=useState(initialProducts);
+  const[heroShoes,setHeroShoes]=useState(initialProducts.slice(0,5));
   const[spotlight,setSpotlight]=useState(()=>randomSpotlight(fallback));
   const releases=useLiveReleases();
 
-  useEffect(()=>{fetch('/api/catalog').then(response=>response.ok?response.json():null).then(data=>data?.products?.length&&setProducts(data.products.filter(valid))).catch(()=>{})},[]);
-  useEffect(()=>{setShuffled([...products].sort(()=>Math.random()-.5));setSpotlight(randomSpotlight(products))},[products]);
+  useEffect(()=>{fetch('/api/catalog').then(response=>response.ok?response.json():null).then(data=>data?.products?.length&&setProducts(dedupeCatalogProducts(data.products.filter(valid)))).catch(()=>{})},[]);
+  useEffect(()=>{setShuffled([...products].sort(()=>Math.random()-.5));setSpotlight(randomSpotlight(products));setHeroShoes(randomCatalogProducts(products,5,product=>valid(product)&&!product.referenceOnly))},[products]);
   useEffect(()=>{const observer=new IntersectionObserver(entries=>entries.forEach(entry=>entry.isIntersecting&&entry.target.classList.add('in')),{threshold:.12});document.querySelectorAll('.reveal').forEach(element=>observer.observe(element));return()=>observer.disconnect()},[products]);
-
-  const heroShoes=products.filter(product=>valid(product)&&!product.referenceOnly).slice(0,5);
 
   return <main>
     <VerticalImageStack items={heroShoes}/>
