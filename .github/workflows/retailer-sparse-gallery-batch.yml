@@ -1,11 +1,6 @@
 name: Sparse retailer exact-page enrichment
-# Safe sparse pass 2026-09-02T00:28Z; exact-product safeguards unchanged.
+# PAUSED: manual dispatch only until enrichment is resumed.
 on:
-  push:
-    branches:
-      - claude/diceyshoes-setup-deploy-n3gzy4
-    paths:
-      - '.github/workflows/retailer-sparse-gallery-batch.yml'
   workflow_dispatch:
 permissions:
   contents: read
