@@ -1,13 +1,6 @@
 name: Official brand gallery enrichment
-# Rolling exact-SKU official pass 2026-09-02T00:28Z. Rotate to under-tested official brand lanes; exact-SKU matching only.
+# PAUSED: manual dispatch only until enrichment is resumed.
 on:
-  push:
-    branches:
-      - claude/diceyshoes-setup-deploy-n3gzy4
-    paths:
-      - '.github/workflows/official-brand-gallery-batch.yml'
-      - 'scripts/official-brand-gallery-batch.mjs'
-      - 'scripts/filter-under-armour-gallery.mjs'
   workflow_dispatch:
 permissions:
   contents: read
