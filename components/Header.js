@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import {useEffect,useState} from 'react';
+import {usePathname} from 'next/navigation';
 import {useStore} from './StoreProvider';
 
 const primary=[['/shop','Shop all'],['/search','Find a shoe'],['/community','Community'],['/releases','New releases'],['/brands','All brands']];
@@ -9,10 +10,12 @@ const featuredBrands=['HOKA','On','Salomon','ASICS','New Balance','Nike','Jordan
 const shop=[['/men','Men'],['/women','Women'],['/wishlist','Wishlist'],['/cart','Bag']];
 
 export default function Header(){
+  const pathname=usePathname();
   const{cart,wish}=useStore();
   const[open,setOpen]=useState(false);
   useEffect(()=>{document.body.style.overflow=open?'hidden':'';const key=e=>e.key==='Escape'&&setOpen(false);window.addEventListener('keydown',key);return()=>{document.body.style.overflow='';window.removeEventListener('keydown',key)}},[open]);
   const close=()=>setOpen(false);
+  if(pathname==='/')return null;
   return <>
     <style jsx global>{`
       .promo{padding:9px 12px;font-size:11px;letter-spacing:.16em}
