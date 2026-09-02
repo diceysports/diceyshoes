@@ -24,10 +24,12 @@ export default function VerticalImageStack({items=[]}){
   },[images.length]);
 
   const handleDragEnd=(_,info)=>{
-    didDrag.current=Math.abs(info.offset.y)>8;
-    if(info.offset.y < -50)navigate(1);
-    else if(info.offset.y > 50)navigate(-1);
-    window.setTimeout(()=>{didDrag.current=false},80);
+    const distance=info.offset.y;
+    const velocity=info.velocity.y;
+    didDrag.current=Math.abs(distance)>8;
+    if(distance < -35||velocity < -450)navigate(1);
+    else if(distance > 35||velocity > 450)navigate(-1);
+    window.setTimeout(()=>{didDrag.current=false},120);
   };
 
   useEffect(()=>{
@@ -68,7 +70,7 @@ export default function VerticalImageStack({items=[]}){
       {images.map((image,index)=>{
         if(!isVisible(index))return null;
         const style=getCardStyle(index);const isCurrent=index===currentIndex;
-        return <motion.div key={image.slug} className={`verticalStackMotionCard${isCurrent?' current':''}`} animate={{y:style.y,scale:style.scale,opacity:style.opacity,rotateX:style.rotateX}} transition={{type:'spring',stiffness:300,damping:30,mass:1}} drag={isCurrent?'y':false} dragConstraints={{top:0,bottom:0}} dragElastic={.2} onDragStart={()=>{didDrag.current=false}} onDragEnd={handleDragEnd} onClick={()=>!isCurrent&&setCurrentIndex(index)} style={{transformStyle:'preserve-3d',zIndex:style.zIndex}} aria-hidden={!isCurrent}>
+        return <motion.div key={image.slug} className={`verticalStackMotionCard${isCurrent?' current':''}`} animate={{y:style.y,scale:style.scale,opacity:style.opacity,rotateX:style.rotateX}} transition={{type:'spring',stiffness:300,damping:30,mass:1}} drag={isCurrent?'y':false} dragConstraints={{top:-140,bottom:140}} dragElastic={.06} dragMomentum={false} whileDrag={{scale:1.015}} onDragStart={()=>{didDrag.current=false}} onDragEnd={handleDragEnd} onClick={()=>!isCurrent&&setCurrentIndex(index)} style={{transformStyle:'preserve-3d',zIndex:style.zIndex,touchAction:isCurrent?'none':'auto',userSelect:isCurrent?'none':'auto'}} aria-hidden={!isCurrent}>
           <div className="verticalStackCard"><div className="verticalStackCardGlow" aria-hidden="true"/>{isCurrent?<Link href={`/product/${image.slug}`} onClick={event=>didDrag.current&&event.preventDefault()} aria-label={`View ${image.name}`}><img src={image.image} alt={image.name} draggable={false}/></Link>:<img src={image.image} alt="" draggable={false}/>}<div className="verticalStackCardShade" aria-hidden="true"/></div>
         </motion.div>;
       })}
