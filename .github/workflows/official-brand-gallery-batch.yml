@@ -1,5 +1,5 @@
 name: Official brand gallery enrichment
-# Rolling exact-SKU official pass 2026-09-01T23:30Z. Advance HOKA/On/Mizuno/Under Armour coverage; keep exact-SKU matching only.
+# Rolling exact-SKU official pass 2026-09-02T00:28Z. Rotate to under-tested official brand lanes; exact-SKU matching only.
 on:
   push:
     branches:
@@ -19,11 +19,10 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          - { brand: 'HOKA', shard: 6 }
-          - { brand: 'HOKA', shard: 7 }
-          - { brand: 'On', shard: 3 }
-          - { brand: 'Mizuno', shard: 3 }
-          - { brand: 'Under Armour', shard: 3 }
+          - { brand: 'ASICS', shard: 0 }
+          - { brand: 'New Balance', shard: 0 }
+          - { brand: 'Puma', shard: 0 }
+          - { brand: 'Converse', shard: 0 }
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
