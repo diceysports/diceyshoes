@@ -1,12 +1,6 @@
 name: Supplier Yupoo gallery enrichment
+# PAUSED: manual dispatch only until enrichment is resumed.
 on:
-  push:
-    branches:
-      - claude/diceyshoes-setup-deploy-n3gzy4
-    paths:
-      - '.github/workflows/supplier-yupoo-gallery-batch.yml'
-      - 'scripts/supplier-yupoo-gallery-batch.mjs'
-      - 'data/supplier-yupoo-sources.json'
   workflow_dispatch:
 permissions:
   contents: read
