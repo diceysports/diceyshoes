@@ -10,7 +10,19 @@ const ALLOWED_HOSTS=[
   'media.balenciaga.cn',
   'cdn-images.farfetch-contents.com',
   'img.mytheresa.com',
-  'www.brooksrunning.com'
+  'www.brooksrunning.com',
+  'sneakernews.com',
+  'www.sneakernews.com',
+  'nicekicks.com',
+  'www.nicekicks.com',
+  'newbalance.com',
+  'www.newbalance.com',
+  'nb.scene7.com',
+  'assets.adidas.com',
+  'brand.assets.adidas.com',
+  'images.puma.com',
+  'reebok.com',
+  'www.reebok.com'
 ];
 
 export const runtime='nodejs';
@@ -31,7 +43,8 @@ export async function GET(request){
     const upstream=await fetch(url.toString(),{
       headers:{
         'user-agent':'Mozilla/5.0 (compatible; DiceyShoes/1.0)',
-        'accept':'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+        'accept':'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'referer':url.origin+'/'
       },
       redirect:'follow',
       cache:'no-store'
