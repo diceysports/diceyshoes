@@ -1,4 +1,5 @@
 import {products as fallbackProducts} from '../../../lib/products';
+import {cleanProductName} from '../../../lib/catalog-normalize';
 
 const SUPABASE_URL=process.env.NEXT_PUBLIC_SUPABASE_URL||'https://mmazwydwswrkqgisotyt.supabase.co';
 const SUPABASE_KEY=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||'sb_publishable_qsygJlwjwTVKrumOCyJC5A_Zptqj4xZ';
@@ -49,7 +50,8 @@ export async function POST(req){
       let row=item.productId?rowMap.get(item.productId):null;
       if(row){
         const n=Number(row.retail_price);
-        row={...row,brand_name:BRANDS[row.brand_id]||'Dicey Shoes',retail_price:Number.isFinite(n)&&n>0?n:DEFAULT_PRICE,currency:row.currency||'USD'};
+        const brandName=BRANDS[row.brand_id]||'Dicey Shoes';
+        row={...row,brand_name:brandName,name:cleanProductName(row.name,{brand:brandName}),retail_price:Number.isFinite(n)&&n>0?n:DEFAULT_PRICE,currency:row.currency||'USD'};
       }else row=fallbackRow(item);
       const key=`${item.slug}|${item.sizing}|${item.size}`;
       if(grouped.has(key))grouped.get(key).quantity+=1;
