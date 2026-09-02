@@ -1,12 +1,6 @@
 name: GOAT exact-SKU gallery enrichment
-# Safe rolling pass 2026-09-01T23:30Z: only catalog-linked GOAT pages and exact SKU assets are eligible; advance to remaining untested shard.
+# PAUSED: manual dispatch only until enrichment is resumed.
 on:
-  push:
-    branches:
-      - claude/diceyshoes-setup-deploy-n3gzy4
-    paths:
-      - '.github/workflows/goat-web-gallery-batch.yml'
-      - 'scripts/goat-web-gallery-batch.mjs'
   workflow_dispatch:
 permissions:
   contents: read
