@@ -5,6 +5,7 @@ const SUPABASE_URL=process.env.NEXT_PUBLIC_SUPABASE_URL||'https://mmazwydwswrkqg
 const SUPABASE_KEY=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||'sb_publishable_qsygJlwjwTVKrumOCyJC5A_Zptqj4xZ';
 const BRANDS={1:'Nike',2:'Jordan',3:'Adidas',4:'Yeezy',5:'Balmain',6:'Christian Louboutin',7:'Louis Vuitton',8:'Gucci',9:'Versace',10:'Balenciaga',11:'New Balance',12:'ASICS',13:'Puma',14:'Reebok',15:'Converse',16:'Vans',17:'Saucony',18:'Salomon',19:'HOKA',20:'On',21:'Dior',22:'Maison Margiela',23:'Alexander McQueen',24:'BAPE',25:'Off-White',26:'Fear of God',27:'Brooks',28:'Mizuno',29:'Under Armour',30:'Onitsuka Tiger'};
 const DEFAULT_PRICE=175;
+const SHIPPING_PER_PAIR=25;
 
 async function loadProducts(ids){
   if(!ids.length)return[];
@@ -70,6 +71,7 @@ export async function POST(req){
     ['CA','US','GB','AU','NZ','FR','DE','IT','ES','NL','BE','IE'].forEach((c,i)=>form.set(`shipping_address_collection[allowed_countries][${i}]`,c));
     form.set('metadata[store]','Dicey Shoes');
     form.set('metadata[item_count]',String(normalized.length));
+    form.set('metadata[shipping_per_pair]',String(SHIPPING_PER_PAIR));
 
     [...grouped.values()].forEach(({row,size,sizing,quantity},i)=>{
       const amount=Math.round((Number(row.retail_price)>0?Number(row.retail_price):DEFAULT_PRICE)*100);
@@ -85,6 +87,13 @@ export async function POST(req){
       if(/^https:\/\//i.test(row.image_url||''))form.set(`line_items[${i}][price_data][product_data][images][0]`,row.image_url);
       form.set(`line_items[${i}][quantity]`,String(quantity));
     });
+
+    const shippingIndex=grouped.size;
+    form.set(`line_items[${shippingIndex}][price_data][currency]`,'usd');
+    form.set(`line_items[${shippingIndex}][price_data][unit_amount]`,String(SHIPPING_PER_PAIR*100));
+    form.set(`line_items[${shippingIndex}][price_data][product_data][name]`,'Shipping');
+    form.set(`line_items[${shippingIndex}][price_data][product_data][description]`,'Flat $25 USD shipping per pair');
+    form.set(`line_items[${shippingIndex}][quantity]`,String(normalized.length));
 
     const stripe=await fetch('https://api.stripe.com/v1/checkout/sessions',{
       method:'POST',
