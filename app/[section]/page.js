@@ -11,7 +11,8 @@ import useLiveReleases from '../../components/useLiveReleases';
 import {money} from '../../lib/products';
 import {useStore} from '../../components/StoreProvider';
 
-const INFO={about:['ABOUT DICEY SHOES','Dicey Shoes is a curated footwear store built around sneaker culture, designer footwear and upcoming releases.'],shipping:['SHIPPING','Orders are prepared for tracked delivery. Final delivery estimates and rates are shown before checkout.'],returns:['RETURNS','Unworn items may be eligible for return according to the return window shown with your order. Keep original packaging and tags.'],contact:['CONTACT','For order, product or general support, message Dicey Enterprise on WhatsApp at +1 548 538 2258.'],privacy:['PRIVACY','We use information required to operate the store, process orders and improve the shopping experience. Payment information is handled by the payment provider.'],terms:['TERMS','By using Dicey Shoes you agree to the store terms, product availability rules, pricing and applicable return policies.']};
+const SHIPPING_PER_PAIR=25;
+const INFO={about:['ABOUT DICEY SHOES','Dicey Shoes is a curated footwear store built around sneaker culture, designer footwear and upcoming releases.'],shipping:['SHIPPING','Dicey Shoes charges a flat $25 USD shipping fee per pair. Tracking and delivery details are provided with your order.'],returns:['RETURNS','Unworn items may be eligible for return according to the return window shown with your order. Keep original packaging and tags.'],contact:['CONTACT','For order, product or general support, message Dicey Enterprise on WhatsApp at +1 548 538 2258.'],privacy:['PRIVACY','We use information required to operate the store, process orders and improve the shopping experience. Payment information is handled by the payment provider.'],terms:['TERMS','By using Dicey Shoes you agree to the store terms, product availability rules, pricing and applicable return policies.']};
 
 function Account(){
   const supabase=useMemo(()=>{const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;return url&&key?createClient(url,key):null},[]);
@@ -33,6 +34,17 @@ function Brands(){const products=useCatalog();const bs=[...new Set(products.map(
 
 export default function Section(){
   const{section}=useParams();const{cart,wish,remove}=useStore();const releases=useLiveReleases();
+  const[checkoutBusy,setCheckoutBusy]=useState(false),[checkoutError,setCheckoutError]=useState('');
+  async function startCheckout(){
+    if(!cart.length||checkoutBusy)return;
+    setCheckoutBusy(true);setCheckoutError('');
+    try{
+      const r=await fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:cart.map(x=>({slug:x.slug,size:x.size,sizing:x.sizing,name:x.name,brand:x.brand,image:x.image}))})});
+      const data=await r.json();
+      if(!r.ok||!data?.url)throw new Error(data?.error||'Could not start secure checkout.');
+      window.location.href=data.url;
+    }catch(e){setCheckoutError(e.message||'Could not start secure checkout.');setCheckoutBusy(false)}
+  }
   if(section==='shop')return <Catalog/>;
   if(section==='men')return <Catalog title="MEN" eyebrow="Shop your lane" filter={p=>p.gender==='Men'||p.gender==='Unisex'}/>;
   if(section==='women')return <Catalog title="WOMEN" eyebrow="Shop your lane" filter={p=>p.gender==='Women'||p.gender==='Unisex'}/>;
@@ -41,7 +53,7 @@ export default function Section(){
   if(section==='account')return <Account/>;
   if(section==='community')return <Community/>;
   if(section==='wishlist')return <main><section className="pagehead"><div className="w"><div className="k">Saved</div><h1>WISHLIST</h1></div></section><section className="catalog"><div className="w"><div className="grid">{wish.map(p=><ProductCard p={p} key={p.slug}/>)}</div>{!wish.length&&<div className="empty">No saved shoes yet. <Link href="/shop">Explore the shop →</Link></div>}</div></section></main>;
-  if(section==='cart'){const total=cart.reduce((s,x)=>s+(Number(x.price)||0),0);return <main><section className="pagehead"><div className="w"><div className="k">Your order</div><h1>BAG</h1></div></section><section className="catalog"><div className="w cartlayout"><div>{cart.map(x=><div className="cartitem" key={x.id}><img src={x.image} alt={x.name}/><div><b>{x.brand}</b><h3>{x.name}</h3><p>Size {x.size}</p><strong>{money(x.price)}</strong></div><button onClick={()=>remove(x.id)}>Remove</button></div>)}{!cart.length&&<div className="empty">Your bag is empty. <Link href="/shop">Shop shoes →</Link></div>}</div><aside className="summary"><div className="k">Order summary</div><h2>{money(total)}</h2><p>Taxes and delivery calculated at checkout.</p><button className="btn v wide" disabled={!cart.length}>Secure checkout</button></aside></div></section></main>}
+  if(section==='cart'){const subtotal=cart.reduce((s,x)=>s+(Number(x.price)||0),0),shipping=cart.length*SHIPPING_PER_PAIR,total=subtotal+shipping;return <main><section className="pagehead"><div className="w"><div className="k">Your order</div><h1>BAG</h1></div></section><section className="catalog"><div className="w cartlayout"><div>{cart.map(x=><div className="cartitem" key={x.id}><img src={x.image} alt={x.name}/><div><b>{x.brand}</b><h3>{x.name}</h3><p>Size {x.size}</p><strong>{money(x.price)}</strong></div><button onClick={()=>remove(x.id)}>Remove</button></div>)}{!cart.length&&<div className="empty">Your bag is empty. <Link href="/shop">Shop shoes →</Link></div>}</div><aside className="summary"><div className="k">Order summary</div><p>Subtotal: <strong>{money(subtotal)}</strong></p><p>Shipping ({cart.length} {cart.length===1?'pair':'pairs'} × $25): <strong>{money(shipping)}</strong></p><h2>{money(total)}</h2><p>Taxes calculated at checkout.</p><button className="btn v wide" disabled={!cart.length||checkoutBusy} onClick={startCheckout}>{checkoutBusy?'Opening checkout…':'Secure checkout'}</button>{checkoutError&&<p>{checkoutError}</p>}</aside></div></section></main>}
   if(section==='releases')return <main><section className="pagehead dark"><div className="w"><div className="ey">Drop watch</div><h1>RELEASE RADAR</h1><p>Upcoming releases, photos and direct source links. Checked daily.</p></div></section><section><div className="w"><ReleaseCards items={releases}/></div></section></main>;
   if(section==='brands')return <Brands/>;
   if(section==='news')return <main><section className="pagehead"><div className="w"><div className="k">Culture feed</div><h1>NEWS</h1><p>Fresh sneaker stories link directly to the original publisher.</p></div></section><section><div className="w"><LiveNews limit={30}/></div></section></main>;
