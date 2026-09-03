@@ -25,6 +25,8 @@ const ALLOWED_HOSTS=[
   'www.reebok.com'
 ];
 
+const TRUSTED_ARTICLE_HOSTS=['sneakernews.com','www.sneakernews.com','nicekicks.com','www.nicekicks.com'];
+
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 
@@ -33,11 +35,48 @@ function allowed(hostname){
   return ALLOWED_HOSTS.some(x=>host===x||host.endsWith('.'+x));
 }
 
+function trustedArticle(hostname){
+  return TRUSTED_ARTICLE_HOSTS.includes(hostname.toLowerCase());
+}
+
+function metaImage(html=''){
+  const patterns=[
+    /<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["']/i,
+    /<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i
+  ];
+  for(const re of patterns){
+    const match=html.match(re);
+    if(match?.[1])return match[1].replace(/&amp;/g,'&');
+  }
+  return '';
+}
+
+async function resolveArticleImage(article){
+  const articleUrl=new URL(article);
+  if(articleUrl.protocol!=='https:'||!trustedArticle(articleUrl.hostname))return null;
+  const response=await fetch(articleUrl.toString(),{
+    headers:{'user-agent':'Mozilla/5.0 (compatible; DiceyShoes/1.0)','accept':'text/html,application/xhtml+xml'},
+    redirect:'follow',
+    cache:'no-store'
+  });
+  if(!response.ok)return null;
+  const found=metaImage(await response.text());
+  if(!found)return null;
+  const imageUrl=new URL(found,articleUrl).toString();
+  const parsed=new URL(imageUrl);
+  return parsed.protocol==='https:'&&allowed(parsed.hostname)?parsed:null;
+}
+
 export async function GET(request){
   try{
-    const source=new URL(request.url).searchParams.get('url');
-    if(!source)return new Response('Missing image URL',{status:400});
-    const url=new URL(source);
+    const params=new URL(request.url).searchParams;
+    const article=params.get('article');
+    const source=params.get('url');
+    let url=article?await resolveArticleImage(article):source?new URL(source):null;
+    if(!url)return new Response('Missing or unresolved image URL',{status:404});
+    if(typeof url==='string')url=new URL(url);
     if(url.protocol!=='https:'||!allowed(url.hostname))return new Response('Image host not allowed',{status:403});
 
     const upstream=await fetch(url.toString(),{
