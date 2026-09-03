@@ -2,14 +2,15 @@
 
 import Link from 'next/link';
 import {motion,useReducedMotion} from 'framer-motion';
-import {ArrowUpRight,Facebook,Instagram,Music2,Youtube} from 'lucide-react';
+import {ArrowUpRight,Facebook,Instagram,MessageCircle,Music2,Youtube} from 'lucide-react';
 import NewsletterForm from './NewsletterForm';
 
 const footerLinks=[
   {label:'Shop',links:[{title:'Shop all',href:'/shop'},{title:'Men',href:'/men'},{title:'Women',href:'/women'},{title:'Luxury',href:'/luxury'}]},
   {label:'Discover',links:[{title:'New releases',href:'/releases'},{title:'Community',href:'/community'},{title:'Sneaker news',href:'/news'},{title:'All brands',href:'/brands'}]},
-  {label:'Support',links:[{title:'Contact',href:'/contact'},{title:'Shipping',href:'/shipping'},{title:'Returns',href:'/returns'},{title:'Privacy',href:'/privacy'},{title:'Terms',href:'/terms'}]},
+  {label:'Support',links:[{title:'Contact',href:'/contact'},{title:'WhatsApp +1 548 538 2258',href:'https://wa.me/15485382258',icon:MessageCircle},{title:'Shipping',href:'/shipping'},{title:'Returns',href:'/returns'},{title:'Privacy',href:'/privacy'},{title:'Terms',href:'/terms'}]},
   {label:'Social',links:[
+    {title:'WhatsApp',href:'https://wa.me/15485382258',icon:MessageCircle},
     {title:'Instagram',href:process.env.NEXT_PUBLIC_INSTAGRAM_URL||'https://www.instagram.com/',icon:Instagram},
     {title:'Facebook',href:process.env.NEXT_PUBLIC_FACEBOOK_URL||'https://www.facebook.com/',icon:Facebook},
     {title:'TikTok',href:process.env.NEXT_PUBLIC_TIKTOK_URL||'https://www.tiktok.com/',icon:Music2},
