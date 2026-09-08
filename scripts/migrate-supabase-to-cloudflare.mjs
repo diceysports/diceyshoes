@@ -1,25 +1,27 @@
 import fs from 'node:fs/promises';
 
-const required = ['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_API_TOKEN','D1_DATABASE_ID'];
+const required = ['SUPABASE_URL','SUPABASE_PUBLIC_KEY','SUPABASE_MEDIA_URL','SUPABASE_MEDIA_SERVICE_ROLE_KEY','CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_API_TOKEN','D1_DATABASE_ID'];
 for (const k of required) if (!process.env[k]) throw new Error(`Missing ${k}`);
 
-const SUPABASE_URL = process.env.SUPABASE_URL.replace(/\/$/,'');
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const PRIMARY_URL = process.env.SUPABASE_URL.replace(/\/$/,'');
+const PRIMARY_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const PRIMARY_PUBLIC_KEY = process.env.SUPABASE_PUBLIC_KEY;
+const MEDIA_URL = process.env.SUPABASE_MEDIA_URL.replace(/\/$/,'');
+const MEDIA_KEY = process.env.SUPABASE_MEDIA_SERVICE_ROLE_KEY;
 const ACCOUNT = process.env.CLOUDFLARE_ACCOUNT_ID;
 const TOKEN = process.env.CLOUDFLARE_API_TOKEN;
 const DB = process.env.D1_DATABASE_ID;
 const BATCH = Number(process.env.MIGRATION_BATCH || 500);
 
-const TABLES = (process.env.MIGRATION_TABLES || [
+const PRIMARY_TABLES = [
   'shoe_products',
-  'shoe_product_media',
   'shoe_enrichment_sources',
   'shoe_enrichment_queue',
   'shoe_product_external_records'
-].join(',')).split(',').map(s=>s.trim()).filter(Boolean);
+];
 
 const cfHeaders = {Authorization:`Bearer ${TOKEN}`,'content-type':'application/json'};
-const sbHeaders = {apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`};
+const headersFor = key => ({apikey:key,Authorization:`Bearer ${key}`});
 
 async function d1(sql, params=[]) {
   const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/d1/database/${DB}/query`, {
@@ -36,14 +38,33 @@ async function applySchema(){
   for (const sql of statements) await d1(sql);
 }
 
-async function getPage(table, offset){
-  const u = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
+async function requestPage(baseUrl,key,table,offset){
+  const u = new URL(`${baseUrl}/rest/v1/${table}`);
   u.searchParams.set('select','*');
   u.searchParams.set('limit',String(BATCH));
   u.searchParams.set('offset',String(offset));
-  const r = await fetch(u,{headers:sbHeaders});
-  if (!r.ok) throw new Error(`Supabase ${table} ${r.status}: ${await r.text()}`);
-  return r.json();
+  const r = await fetch(u,{headers:headersFor(key)});
+  const text = await r.text();
+  if (!r.ok) return {ok:false,status:r.status,text};
+  return {ok:true,rows:JSON.parse(text)};
+}
+
+async function getPrimaryPage(table,offset){
+  if (PRIMARY_SERVICE_KEY) {
+    const a = await requestPage(PRIMARY_URL,PRIMARY_SERVICE_KEY,table,offset);
+    if (a.ok) return a.rows;
+    if (a.status !== 401) throw new Error(`Supabase primary ${table} ${a.status}: ${a.text}`);
+    console.warn(`Primary service key rejected for ${table}; trying public read key`);
+  }
+  const b = await requestPage(PRIMARY_URL,PRIMARY_PUBLIC_KEY,table,offset);
+  if (!b.ok) throw new Error(`Supabase primary ${table} ${b.status}: ${b.text}`);
+  return b.rows;
+}
+
+async function getMediaPage(table,offset){
+  const a = await requestPage(MEDIA_URL,MEDIA_KEY,table,offset);
+  if (!a.ok) return a;
+  return {ok:true,rows:a.rows};
 }
 
 const json = v => v == null ? null : JSON.stringify(v);
@@ -55,10 +76,10 @@ function rawKey(table,row,i){
   return `${table}:${i}:${Buffer.from(JSON.stringify(row)).toString('base64url').slice(0,32)}`;
 }
 
-async function upsertRaw(table,row,key){
+async function upsertRaw(table,row,key,source='primary'){
   await d1(`INSERT INTO supabase_raw_rows(table_name,row_key,row_json,imported_at) VALUES(?,?,?,CURRENT_TIMESTAMP)
     ON CONFLICT(table_name,row_key) DO UPDATE SET row_json=excluded.row_json, imported_at=CURRENT_TIMESTAMP`,
-    [table,key,JSON.stringify(row)]);
+    [`${source}:${table}`,key,JSON.stringify(row)]);
 }
 
 async function upsertStructured(table,row){
@@ -88,26 +109,62 @@ async function upsertStructured(table,row){
   }
 }
 
-async function migrateTable(table){
+async function migratePrimaryTable(table){
   let offset=0,total=0;
   while(true){
-    const rows=await getPage(table,offset);
+    const rows=await getPrimaryPage(table,offset);
     for(let i=0;i<rows.length;i++){
       const row=rows[i];
-      await upsertRaw(table,row,rawKey(table,row,offset+i));
+      await upsertRaw(table,row,rawKey(table,row,offset+i),'primary');
       await upsertStructured(table,row);
     }
     total += rows.length;
-    console.log(`${table}: ${total}`);
+    console.log(`primary ${table}: ${total}`);
     if(rows.length < BATCH) break;
     offset += BATCH;
   }
-  await d1(`INSERT INTO migration_meta(key,value,updated_at) VALUES(?,?,CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP`,[`count:${table}`,String(total)]);
+  await d1(`INSERT INTO migration_meta(key,value,updated_at) VALUES(?,?,CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP`,[`count:primary:${table}`,String(total)]);
+  return total;
+}
+
+async function migrateMediaTable(){
+  const table='shoe_product_media';
+  let offset=0,total=0;
+  while(true){
+    const res=await getMediaPage(table,offset);
+    if(!res.ok){
+      if(offset===0 && (res.status===404 || res.status===400)){
+        console.warn(`Media project does not expose ${table}; skipping table import from media project`);
+        return 0;
+      }
+      throw new Error(`Supabase media ${table} ${res.status}: ${res.text}`);
+    }
+    const rows=res.rows;
+    for(let i=0;i<rows.length;i++){
+      const row=rows[i];
+      await upsertRaw(table,row,rawKey(table,row,offset+i),'media');
+      try { await upsertStructured(table,row); }
+      catch (e) { console.warn(`Skipping media row ${row.media_id ?? row.id ?? '?'}: ${e.message}`); }
+    }
+    total += rows.length;
+    console.log(`media ${table}: ${total}`);
+    if(rows.length < BATCH) break;
+    offset += BATCH;
+  }
+  await d1(`INSERT INTO migration_meta(key,value,updated_at) VALUES(?,?,CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP`,[`count:media:${table}`,String(total)]);
   return total;
 }
 
 await applySchema();
 const counts={};
-for (const table of TABLES) counts[table]=await migrateTable(table);
+for (const table of PRIMARY_TABLES) {
+  try { counts[`primary:${table}`]=await migratePrimaryTable(table); }
+  catch(e){
+    if(table==='shoe_products') throw e;
+    console.warn(`Skipping primary ${table}: ${e.message}`);
+    counts[`primary:${table}`]=0;
+  }
+}
+counts['media:shoe_product_media']=await migrateMediaTable();
 await d1(`INSERT INTO migration_meta(key,value,updated_at) VALUES('last_completed_at',?,CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP`,[new Date().toISOString()]);
 console.log(JSON.stringify({ok:true,counts},null,2));
