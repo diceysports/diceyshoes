@@ -1,0 +1,128 @@
+name: Migrate Dicey Shoes Storage to R2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/diceyshoes-setup-deploy-n3gzy4
+    paths:
+      - '.github/workflows/migrate-supabase-storage-to-r2.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: diceyshoes-r2-storage-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate-storage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      SUPABASE_PROJECT_REF: qwptdjnegrghtjfqurdg
+      SUPABASE_S3_REGION: us-west-2
+      SUPABASE_S3_ACCESS_KEY_ID: ${{ secrets.SUPABASE_S3_ACCESS_KEY_ID }}
+      SUPABASE_S3_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_S3_SECRET_ACCESS_KEY }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      R2_BUCKET: diceyshoes-media
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in SUPABASE_S3_ACCESS_KEY_ID SUPABASE_S3_SECRET_ACCESS_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing GitHub Actions secret: $name"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Configure Supabase S3
+        shell: bash
+        run: |
+          mkdir -p ~/.aws
+          cat > ~/.aws/credentials <<EOF
+          [supabase]
+          aws_access_key_id=${SUPABASE_S3_ACCESS_KEY_ID}
+          aws_secret_access_key=${SUPABASE_S3_SECRET_ACCESS_KEY}
+          EOF
+          cat > ~/.aws/config <<EOF
+          [profile supabase]
+          region=${SUPABASE_S3_REGION}
+          output=json
+          EOF
+
+      - name: Discover Supabase buckets
+        id: discover
+        shell: bash
+        run: |
+          set -euo pipefail
+          ENDPOINT="https://${SUPABASE_PROJECT_REF}.storage.supabase.co/storage/v1/s3"
+          echo "Testing Supabase S3 endpoint: $ENDPOINT"
+          aws --profile supabase --endpoint-url "$ENDPOINT" s3 ls
+          BUCKETS="$(aws --profile supabase --endpoint-url "$ENDPOINT" s3api list-buckets --query 'Buckets[].Name' --output text)"
+          if [ -z "$BUCKETS" ]; then
+            echo "::error::No Supabase Storage buckets were returned"
+            exit 1
+          fi
+          echo "Buckets found: $BUCKETS"
+          printf '%s\n' "$BUCKETS" > /tmp/supabase-buckets.txt
+
+      - name: Download Supabase Storage
+        shell: bash
+        run: |
+          set -euo pipefail
+          ENDPOINT="https://${SUPABASE_PROJECT_REF}.storage.supabase.co/storage/v1/s3"
+          mkdir -p /tmp/supabase-storage
+          while IFS= read -r line; do
+            for bucket in $line; do
+              echo "Downloading bucket: $bucket"
+              mkdir -p "/tmp/supabase-storage/$bucket"
+              aws --profile supabase --endpoint-url "$ENDPOINT" s3 sync "s3://$bucket" "/tmp/supabase-storage/$bucket" --no-progress
+            done
+          done < /tmp/supabase-buckets.txt
+          echo "Downloaded files: $(find /tmp/supabase-storage -type f | wc -l)"
+          du -sh /tmp/supabase-storage || true
+
+      - name: Ensure Cloudflare R2 bucket
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 r2 bucket create "$R2_BUCKET" --remote >/tmp/r2-create.log 2>&1 || true
+          cat /tmp/r2-create.log
+          npx --yes wrangler@4 r2 bucket list
+
+      - name: Upload files to Cloudflare R2
+        shell: bash
+        run: |
+          set -euo pipefail
+          total=$(find /tmp/supabase-storage -type f | wc -l)
+          if [ "$total" -eq 0 ]; then
+            echo "::error::No files downloaded from Supabase"
+            exit 1
+          fi
+          count=0
+          while IFS= read -r -d '' file; do
+            rel="${file#/tmp/supabase-storage/}"
+            npx --yes wrangler@4 r2 object put "${R2_BUCKET}/${rel}" --file "$file" --remote >/dev/null
+            count=$((count+1))
+            if [ $((count % 100)) -eq 0 ] || [ "$count" -eq "$total" ]; then
+              echo "Uploaded $count / $total files"
+            fi
+          done < <(find /tmp/supabase-storage -type f -print0)
+
+      - name: Verify R2 object count
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Storage migration completed. Source files were uploaded to R2 bucket: $R2_BUCKET"
