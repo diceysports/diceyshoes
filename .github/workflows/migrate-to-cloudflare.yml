@@ -7,6 +7,7 @@ on:
       - claude/diceyshoes-setup-deploy-n3gzy4
     paths:
       - '.github/workflows/migrate-to-cloudflare.yml'
+      - 'scripts/migrate-supabase-to-cloudflare.mjs'
 
 permissions:
   contents: read
@@ -22,6 +23,9 @@ jobs:
     env:
       SUPABASE_URL: https://mmazwydwswrkqgisotyt.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_PUBLIC_KEY: sb_publishable_qsygJlwjwTVKrumOCyJC5A_Zptqj4xZ
+      SUPABASE_MEDIA_URL: https://qwptdjnegrghtjfqurdg.supabase.co
+      SUPABASE_MEDIA_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_MEDIA_SERVICE_ROLE_KEY }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       D1_DATABASE_NAME: diceyshoes-catalog
@@ -37,12 +41,15 @@ jobs:
         run: |
           set -euo pipefail
           missing=0
-          for name in SUPABASE_SERVICE_ROLE_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN; do
+          for name in SUPABASE_MEDIA_SERVICE_ROLE_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN; do
             if [ -z "${!name:-}" ]; then
               echo "::error::Missing GitHub Actions secret: $name"
               missing=1
             fi
           done
+          if [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "::warning::SUPABASE_SERVICE_ROLE_KEY missing; catalog migration will use the existing public read key where possible"
+          fi
           exit "$missing"
 
       - name: Find or create D1 database
@@ -77,6 +84,8 @@ jobs:
             echo "::error::Migration verification failed: only $COUNT published products"
             exit 1
           fi
+          MEDIA_BODY="$(curl -fsS -X POST -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'content-type: application/json' "$QUERY_URL" --data '{"sql":"SELECT COUNT(*) AS media_rows FROM shoe_product_media;"}')"
+          printf '%s\n' "$MEDIA_BODY"
 
       - name: Generate Worker config
         shell: bash
