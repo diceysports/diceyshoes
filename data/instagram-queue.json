@@ -1,0 +1,40 @@
+{
+  "updatedAt": null,
+  "notes": "Content calendar for scripts/instagram-publish.mjs. Items only publish when status is \"ready\" and publishAt has passed. Seed entries are drafts: fill mediaSource with a public https URL, set status to \"ready\", then run the publish script or the Instagram publish workflow.",
+  "items": [
+    {
+      "id": "drop-aj9-space-jam",
+      "status": "draft",
+      "publishAt": "2026-09-18T15:00:00Z",
+      "type": "image",
+      "intent": "drop",
+      "release": "Space Jam",
+      "image": "",
+      "mediaSource": "Upload the 1080x1350 drop graphic and paste its public https URL into image.",
+      "notes": "Air Jordan 9 OG Space Jam, Sep 19, $215. Post the day before the drop."
+    },
+    {
+      "id": "carousel-samba-og-detail",
+      "status": "draft",
+      "publishAt": null,
+      "type": "carousel",
+      "intent": "feature",
+      "product": "samba-og-white-black-gum",
+      "images": "",
+      "mediaSource": "Three to five 4:5 product shots, comma separated https URLs.",
+      "notes": "Evergreen catalog carousel. Lead slide is the side profile, last slide is the on-foot shot."
+    },
+    {
+      "id": "reel-af1-on-feet",
+      "status": "draft",
+      "publishAt": null,
+      "type": "reel",
+      "intent": "styling",
+      "product": "cactus-jack-air-force-1",
+      "video": "",
+      "cover": "",
+      "mediaSource": "9:16 MP4 under 90s plus a 1080x1920 cover frame.",
+      "notes": "On-feet Reel. Keep the hook in the first two seconds and share to feed."
+    }
+  ]
+}

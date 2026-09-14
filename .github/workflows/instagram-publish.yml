@@ -1,0 +1,121 @@
+name: Instagram publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      type:
+        description: 'image, carousel or reel'
+        type: choice
+        options: [image, carousel, reel]
+        default: image
+      image_url:
+        description: 'Public https image URL (type=image)'
+        default: ''
+      image_urls:
+        description: 'Comma separated https image URLs, 2-10 slides (type=carousel)'
+        default: ''
+      video_url:
+        description: 'Public https MP4 URL, 9:16, max 90s (type=reel)'
+        default: ''
+      cover_url:
+        description: 'Cover frame URL for the Reel'
+        default: ''
+      caption:
+        description: 'Caption text. Leave empty to generate one from product_slug or release.'
+        default: ''
+      product_slug:
+        description: 'Catalog slug for a voice-matched caption, e.g. samba-og-white-black-gum'
+        default: ''
+      release:
+        description: 'Upcoming release name for a drop caption, e.g. Space Jam'
+        default: ''
+      first_comment:
+        description: 'First comment text. Leave empty to use the generated hashtag block.'
+        default: ''
+      dry_run:
+        description: 'Validate and preflight only'
+        type: boolean
+        default: true
+  schedule:
+    # Daily queue check. Publishes only when the IG_AUTOPUBLISH variable is set to true.
+    - cron: '0 15 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: instagram-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      IG_USER_ID: ${{ secrets.IG_USER_ID }}
+      IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+      IG_GRAPH_VERSION: ${{ vars.IG_GRAPH_VERSION }}
+      IG_API_BASE: ${{ vars.IG_API_BASE }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Offline checks
+        run: node --test scripts/instagram-selftest.mjs
+
+      - name: Publish from dispatch inputs
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          IG_TYPE: ${{ inputs.type }}
+          IG_IMAGE: ${{ inputs.image_url }}
+          IG_IMAGES: ${{ inputs.image_urls }}
+          IG_VIDEO: ${{ inputs.video_url }}
+          IG_COVER: ${{ inputs.cover_url }}
+          IG_CAPTION: ${{ inputs.caption }}
+          IG_PRODUCT: ${{ inputs.product_slug }}
+          IG_RELEASE: ${{ inputs.release }}
+          IG_FIRST_COMMENT: ${{ inputs.first_comment }}
+          IG_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          args=(--type "$IG_TYPE")
+          add_arg(){ if [ -n "$2" ]; then args+=("$1" "$2"); fi; }
+          add_arg --image "$IG_IMAGE"
+          add_arg --images "$IG_IMAGES"
+          add_arg --video "$IG_VIDEO"
+          add_arg --cover "$IG_COVER"
+          add_arg --caption "$IG_CAPTION"
+          add_arg --product "$IG_PRODUCT"
+          add_arg --release "$IG_RELEASE"
+          add_arg --first-comment "$IG_FIRST_COMMENT"
+          if [ "$IG_DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          node scripts/instagram-publish.mjs "${args[@]}" | tee publish.log
+          { echo '### Instagram publish'; echo '```'; cat publish.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish the next ready queue item
+        if: github.event_name == 'schedule'
+        env:
+          AUTOPUBLISH: ${{ vars.IG_AUTOPUBLISH }}
+        run: |
+          set -euo pipefail
+          if [ "${AUTOPUBLISH:-false}" = "true" ]; then
+            node scripts/instagram-publish.mjs --queue next --queue-write | tee publish.log
+          else
+            echo "IG_AUTOPUBLISH is not set to true — running the queue in dry-run mode."
+            node scripts/instagram-publish.mjs --queue next --dry-run | tee publish.log
+          fi
+          { echo '### Instagram queue run'; echo '```'; cat publish.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit queue state
+        if: github.event_name == 'schedule' && vars.IG_AUTOPUBLISH == 'true'
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/instagram-queue.json
+          git diff --staged --quiet || {
+            git commit -m 'Mark Instagram queue item as published'
+            git push
+          }

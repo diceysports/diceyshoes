@@ -1,0 +1,49 @@
+name: Instagram insights
+
+on:
+  workflow_dispatch:
+    inputs:
+      what:
+        description: 'all, account, media, comments or quota'
+        type: choice
+        options: [all, account, media, comments, quota]
+        default: all
+      days:
+        description: 'Days of account history to summarise'
+        default: '7'
+  schedule:
+    # Monday morning performance read.
+    - cron: '0 13 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      IG_USER_ID: ${{ secrets.IG_USER_ID }}
+      IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+      IG_GRAPH_VERSION: ${{ vars.IG_GRAPH_VERSION }}
+      IG_API_BASE: ${{ vars.IG_API_BASE }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Report
+        env:
+          WHAT: ${{ inputs.what || 'all' }}
+          DAYS: ${{ inputs.days || '7' }}
+        run: |
+          set -euo pipefail
+          node scripts/instagram-insights.mjs --what "$WHAT" --days "$DAYS" --markdown > report.md
+          cat report.md
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: instagram-report
+          path: report.md
+          retention-days: 14
