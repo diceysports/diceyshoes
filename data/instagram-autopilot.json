@@ -1,0 +1,15 @@
+{
+  "config": {
+    "enabled": true,
+    "maxPostsPerDay": 1,
+    "minHoursBetweenPosts": 12,
+    "dropLeadDays": 1,
+    "catalogCooldownDays": 21,
+    "maxCandidates": 8,
+    "mediaBaseUrl": "",
+    "mediaExtension": "jpg"
+  },
+  "notes": "Kill switch: set config.enabled to false and the autopilot stands down on its next run without posting. Set mediaBaseUrl to a public bucket holding artwork named <catalog-slug>.jpg and the autopilot prefers it over the catalog's third-party image links. History is written by scripts/instagram-autopilot.mjs — do not hand-edit it.",
+  "lastPostAt": null,
+  "history": []
+}

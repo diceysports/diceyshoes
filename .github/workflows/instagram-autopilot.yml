@@ -1,0 +1,74 @@
+name: Instagram autopilot
+
+# Posts on its own. The kill switch is config.enabled in data/instagram-autopilot.json,
+# or disabling this workflow in the Actions tab.
+
+on:
+  schedule:
+    - cron: '0 15 * * *'   # main slot, 15:00 UTC
+    - cron: '0 23 * * *'   # fallback slot, only posts if the main slot found nothing usable
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Decide and validate without publishing'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: instagram-autopilot
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      IG_USER_ID: ${{ secrets.IG_USER_ID }}
+      IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+      IG_GRAPH_VERSION: ${{ vars.IG_GRAPH_VERSION }}
+      IG_API_BASE: ${{ vars.IG_API_BASE }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Guard
+        run: node --test scripts/instagram-selftest.mjs
+
+      - name: Check credentials
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if [ -z "${IG_USER_ID:-}" ] || [ -z "${IG_ACCESS_TOKEN:-}" ]; then
+            echo "::error::IG_USER_ID and IG_ACCESS_TOKEN are not set as repository secrets, so the autopilot cannot post. Add them in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Decide and post
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            node scripts/instagram-autopilot.mjs --dry-run | tee autopilot.log
+          else
+            node scripts/instagram-autopilot.mjs | tee autopilot.log
+          fi
+          { echo '### Instagram autopilot'; echo '```'; cat autopilot.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit post history
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/instagram-autopilot.json data/instagram-queue.json
+          if git diff --staged --quiet; then
+            echo 'Nothing was posted, so there is no history to record.'
+            exit 0
+          fi
+          git commit -m 'Record Instagram autopilot post'
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

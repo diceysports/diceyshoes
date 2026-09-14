@@ -10,12 +10,16 @@ dependencies — Node 18+ and `fetch` only.
 | --- | --- |
 | `lib/instagram.js` | Graph API client: containers, status polling, publishing, insights, comments, quota |
 | `lib/instagram-copy.js` | Brand voice: hooks, captions, hashtag tiers, alt text, reply drafts, voice linting |
+| `lib/instagram-autopilot.js` | Unattended posting: content selection, media resolution, cadence, history |
+| `scripts/instagram-autopilot.mjs` | Decides what to post and posts it, no human in the loop |
 | `scripts/instagram-publish.mjs` | Publish an image, carousel or Reel; dry runs; content queue |
 | `scripts/instagram-insights.mjs` | Read-only performance and engagement report |
 | `scripts/instagram-reply.mjs` | Reply to a comment, comment on a post, hide a comment |
 | `scripts/instagram-selftest.mjs` | Offline test suite (mocked API, no credentials needed) |
-| `data/instagram-queue.json` | Content calendar the publish script can drain |
-| `.github/workflows/instagram-publish.yml` | Manual publish + daily queue check |
+| `data/instagram-queue.json` | Content calendar the autopilot drains first |
+| `data/instagram-autopilot.json` | Autopilot config, kill switch and post history |
+| `.github/workflows/instagram-autopilot.yml` | Scheduled unattended posting |
+| `.github/workflows/instagram-publish.yml` | Manual publish |
 | `.github/workflows/instagram-insights.yml` | Weekly performance report |
 
 ## One-time setup
@@ -50,6 +54,7 @@ dependencies — Node 18+ and `fetch` only.
 | `IG_HANDLE` | no | `@diceyshoes` | Used in copy |
 | `IG_SUPPORT_WHATSAPP` | no | `+1 548 538 2258` | Used in reply drafts |
 | `IG_TIMEOUT_MS` | no | `20000` | Per-request timeout |
+| `IG_MEDIA_BASE_URL` | no | — | Public bucket of artwork named `<catalog-slug>.jpg`, preferred by the autopilot |
 
 ## Media hosting
 
@@ -99,6 +104,54 @@ Behind the scenes every publish is the same two-phase flow:
 
 Quota is checked before publishing and reported after, so you always know how many of the 50
 API posts per rolling 24 hours are left.
+
+## Autopilot
+
+`scripts/instagram-autopilot.mjs` runs the account without a human in the loop. The workflow fires
+at 15:00 UTC with a 23:00 UTC fallback slot, and posts at most once a day.
+
+```bash
+node scripts/instagram-autopilot.mjs --dry-run   # decide and validate, publish nothing
+node scripts/instagram-autopilot.mjs             # decide and publish
+```
+
+**What it picks, in order**
+
+1. A queue item whose `status` is `ready` and whose `publishAt` has passed.
+2. A release from `lib/releases-daily.js` dropping within `dropLeadDays` — but only if the release
+   row carries its own artwork. It will never caption one sneaker over a photo of a different one.
+3. The least recently posted in-stock shoe in the catalog. Once every shoe has had a turn the
+   rotation restarts from the oldest rather than going quiet.
+
+**How it protects the feed**
+
+- Every image is fetched and measured before it is eligible. A dead link, an HTML error page, an
+  oversize file or a crop outside 4:5–1.91:1 is skipped, and the next candidate is tried.
+- A candidate carries an ordered list of sources. If `mediaBaseUrl` is set, the autopilot tries
+  `<mediaBaseUrl>/<catalog-slug>.jpg` first and falls back to the catalog's own image link.
+- Generated copy runs through `voiceCheck()`. Copy that fails is not posted.
+- If nothing resolves it posts nothing and emits a warning, rather than publishing something broken.
+- Publishing quota and token expiry are checked on every run; a token with under 14 days left
+  raises a warning in the job summary.
+
+**Cadence and history** live in `data/instagram-autopilot.json`:
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `enabled` | `true` | Kill switch. `false` stands the autopilot down |
+| `maxPostsPerDay` | `1` | Hard cap per UTC day |
+| `minHoursBetweenPosts` | `12` | Floor between consecutive posts |
+| `dropLeadDays` | `1` | How far ahead a release may be posted |
+| `catalogCooldownDays` | `21` | How long before a shoe can repeat |
+| `mediaBaseUrl` | `""` | Public bucket of artwork named by catalog slug |
+
+Every post appends to `history` (capped at 200 entries), which is what stops repeats. The workflow
+commits that file back to the repo after each post, so the history survives between runs.
+
+**About hotlinked catalog images.** Most `lib/products.js` images point at GOAT, StockX and brand
+CDNs. Instagram fetches media server-side, and those hosts may refuse it. The autopilot degrades
+safely — it skips what it cannot fetch — but the reliable setup is to put your own artwork in a
+public bucket and set `mediaBaseUrl`.
 
 ## Copy and voice
 
@@ -177,8 +230,9 @@ determinism and reply classification. No credentials or network access required.
 
 - Tokens are sent as an `Authorization: Bearer` header, never in a URL, and are redacted from
   every error message.
-- The scheduled workflow runs the queue in **dry-run mode** unless the repository variable
-  `IG_AUTOPUBLISH` is set to `true`.
+- The autopilot posts unattended. Its kill switch is `config.enabled` in
+  `data/instagram-autopilot.json`; setting it to `false` stands the account down on the next run.
+  Disabling the workflow in the Actions tab does the same.
 - Queue items only publish when `status` is `ready` and `publishAt` has passed. Seeded items are
   drafts.
 - Nothing in the storefront app publishes to Instagram; there is no public route that can post.

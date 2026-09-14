@@ -16,9 +16,13 @@ the `instagram_business_*` scopes and a long-lived token. Do not invent placehol
 
 ## The one rule about publishing
 
-**Always dry run first, show the user the exact caption and assets, and wait for an explicit
-"post it" before running the live command.** A published post is public immediately and cannot be
-edited afterwards — only deleted. The same applies to comment replies.
+**When you are the one posting: always dry run first, show the user the exact caption and assets,
+and wait for an explicit "post it" before running the live command.** A published post is public
+immediately and cannot be edited afterwards — only deleted. The same applies to comment replies.
+
+The autopilot is the exception — the account owner authorised it to post unattended, so it does
+not ask. That authorisation covers the autopilot's own scheduled runs, not posts you initiate in
+conversation.
 
 ```bash
 node scripts/instagram-publish.mjs --type image --image <https url> --product <slug> --dry-run
@@ -36,6 +40,7 @@ same command without `--dry-run`.
 | Carousel (2–10) | `node scripts/instagram-publish.mjs --type carousel --images URL1,URL2,...` |
 | Reel (≤90s, 9:16) | `node scripts/instagram-publish.mjs --type reel --video URL --cover URL` |
 | Next queued post | `node scripts/instagram-publish.mjs --queue next --queue-write` |
+| What the autopilot would post | `node scripts/instagram-autopilot.mjs --dry-run` |
 | Performance | `node scripts/instagram-insights.mjs --days 7` |
 | Comments to answer | `node scripts/instagram-insights.mjs --what comments` |
 | Reply | `node scripts/instagram-reply.mjs --comment ID --message "..."` |
@@ -91,9 +96,26 @@ batch of replies without confirmation.
 and `publishAt` has passed; drafts are ignored. Adding an item means filling in the media URL,
 the copy source (`product`, `release` or `caption`) and the schedule, then flipping the status.
 
-The daily workflow drains the queue in dry-run mode unless the repository variable
-`IG_AUTOPUBLISH` is `true`, so adding a `ready` item is not on its own enough to make the account
-post by itself.
+## The autopilot
+
+The account posts on its own: `.github/workflows/instagram-autopilot.yml` runs at 15:00 UTC with a
+23:00 UTC fallback slot, one post a day maximum. It takes a ready queue item first, then a release
+dropping within the lead window that has its own artwork, then the least recently posted in-stock
+shoe. Media is fetched and measured before anything is eligible, so bad assets are skipped rather
+than posted.
+
+Steering it means editing `data/instagram-autopilot.json`, not the workflow:
+
+- `enabled: false` is the kill switch — use it the moment the user asks to stop the posting.
+- `maxPostsPerDay`, `minHoursBetweenPosts`, `catalogCooldownDays` set the rhythm.
+- `mediaBaseUrl` points at a public bucket of artwork named `<catalog-slug>.jpg`, which the
+  autopilot prefers over the catalog's third-party CDN links.
+- `history` is written by the script. Never hand-edit it — it is what stops the same shoe
+  reappearing.
+
+To show the user what is about to go out, run `node scripts/instagram-autopilot.mjs --dry-run`.
+If it reports nothing publishable, the cause is almost always media the autopilot could not fetch;
+the fix is artwork in a bucket it can reach, not a code change.
 
 ## When something fails
 

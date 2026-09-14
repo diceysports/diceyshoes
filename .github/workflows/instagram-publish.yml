@@ -36,12 +36,9 @@ on:
         description: 'Validate and preflight only'
         type: boolean
         default: true
-  schedule:
-    # Daily queue check. Publishes only when the IG_AUTOPUBLISH variable is set to true.
-    - cron: '0 15 * * *'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: instagram-publish
@@ -66,7 +63,6 @@ jobs:
         run: node --test scripts/instagram-selftest.mjs
 
       - name: Publish from dispatch inputs
-        if: github.event_name == 'workflow_dispatch'
         env:
           IG_TYPE: ${{ inputs.type }}
           IG_IMAGE: ${{ inputs.image_url }}
@@ -93,29 +89,3 @@ jobs:
           if [ "$IG_DRY_RUN" = "true" ]; then args+=(--dry-run); fi
           node scripts/instagram-publish.mjs "${args[@]}" | tee publish.log
           { echo '### Instagram publish'; echo '```'; cat publish.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Publish the next ready queue item
-        if: github.event_name == 'schedule'
-        env:
-          AUTOPUBLISH: ${{ vars.IG_AUTOPUBLISH }}
-        run: |
-          set -euo pipefail
-          if [ "${AUTOPUBLISH:-false}" = "true" ]; then
-            node scripts/instagram-publish.mjs --queue next --queue-write | tee publish.log
-          else
-            echo "IG_AUTOPUBLISH is not set to true — running the queue in dry-run mode."
-            node scripts/instagram-publish.mjs --queue next --dry-run | tee publish.log
-          fi
-          { echo '### Instagram queue run'; echo '```'; cat publish.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Commit queue state
-        if: github.event_name == 'schedule' && vars.IG_AUTOPUBLISH == 'true'
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/instagram-queue.json
-          git diff --staged --quiet || {
-            git commit -m 'Mark Instagram queue item as published'
-            git push
-          }

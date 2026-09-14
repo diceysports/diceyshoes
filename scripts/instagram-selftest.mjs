@@ -13,6 +13,11 @@ import {
 import {
   buildHashtags,captionForProduct,captionForRelease,voiceCheck,draftReply,bannedPhrases
 } from '../lib/instagram-copy.js';
+import {
+  parseReleaseDate,canPostNow,buildCandidates,resolveMedia,selectPost,recordPost,
+  captionFor,bucketUrl,defaultConfig
+} from '../lib/instagram-autopilot.js';
+import {readImageSize} from '../lib/instagram.js';
 
 function mockFetch(handler){
   const calls=[];
@@ -228,4 +233,194 @@ test('comment replies are classified before drafting',()=>{
   assert.ok(draftReply('these are 🔥',{username:'kicksfan'}).reply.includes('@kicksfan'));
   for(const text of['how much','size 10','ship to canada','legit?','🔥','hello'])
     assert.equal(voiceCheck(draftReply(text).reply).ok,true,`reply to "${text}" must stay on voice`);
+});
+
+// ---------- autopilot ----------
+
+function pngBuffer(width,height){
+  const bytes=new Uint8Array(32);
+  bytes.set([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a],0);
+  const view=new DataView(bytes.buffer);
+  view.setUint32(16,width);
+  view.setUint32(20,height);
+  return bytes;
+}
+
+function jpegBuffer(width,height){
+  const bytes=new Uint8Array(40);
+  bytes.set([0xff,0xd8],0);
+  bytes.set([0xff,0xe0,0x00,0x10],2);      // APP0, next marker at 20
+  bytes.set([0xff,0xc0,0x00,0x11,0x08],20); // SOF0
+  const view=new DataView(bytes.buffer);
+  view.setUint16(25,height);
+  view.setUint16(27,width);
+  return bytes;
+}
+
+function mediaFetch(routes){
+  return async(url,init={})=>{
+    const route=routes[String(url)]||{status:404};
+    if(route.throws)throw new Error(route.throws);
+    const headers=new Map([['content-type',route.contentType||'image/png'],['content-length',String(route.bytes??32)]]);
+    return{
+      ok:(route.status??200)<400,
+      status:route.status??(init.headers?.Range?206:200),
+      headers,
+      arrayBuffer:async()=>(route.buffer||pngBuffer(1080,1350)).buffer,
+      text:async()=>''
+    };
+  };
+}
+
+const NOW=new Date('2026-09-14T15:00:00Z');
+
+test('image headers are parsed for PNG, JPEG and junk',()=>{
+  assert.deepEqual(readImageSize(pngBuffer(1080,1350)),{width:1080,height:1350,format:'png'});
+  assert.deepEqual(readImageSize(jpegBuffer(1080,1350)),{width:1080,height:1350,format:'jpeg'});
+  assert.equal(readImageSize(new Uint8Array([1,2,3])),null);
+});
+
+test('release dates resolve against now and roll over the year boundary',()=>{
+  assert.equal(parseReleaseDate('Sep 19',NOW).toISOString().slice(0,10),'2026-09-19');
+  assert.equal(parseReleaseDate('Jan 05',NOW).toISOString().slice(0,10),'2027-01-05');
+  assert.equal(parseReleaseDate('Aug 31',NOW).toISOString().slice(0,10),'2026-08-31');
+  assert.equal(parseReleaseDate('not a date',NOW),null);
+});
+
+test('cadence limits stop the autopilot posting twice in a day',()=>{
+  assert.equal(canPostNow({history:[]},defaultConfig,NOW).ok,true);
+  const postedToday={history:[{id:'catalog:x',at:'2026-09-14T09:00:00Z'}],lastPostAt:'2026-09-14T09:00:00Z'};
+  assert.equal(canPostNow(postedToday,defaultConfig,NOW).ok,false);
+  assert.match(canPostNow(postedToday,defaultConfig,NOW).reason,/cap is 1/);
+  const yesterday={history:[{id:'catalog:x',at:'2026-09-13T22:00:00Z'}],lastPostAt:'2026-09-13T22:00:00Z'};
+  assert.equal(canPostNow(yesterday,defaultConfig,NOW).ok,true,'a 17h gap into a new day must clear the daily slot');
+  assert.equal(canPostNow(yesterday,{...defaultConfig,minHoursBetweenPosts:24},NOW).ok,false);
+  assert.equal(canPostNow({history:[]},{...defaultConfig,enabled:false},NOW).ok,false);
+});
+
+test('candidates rank queue first and skip releases with no artwork of their own',()=>{
+  const queue={items:[
+    {id:'ready-one',status:'ready',publishAt:'2026-09-01T00:00:00Z',type:'image',image:'https://cdn.example.com/q.jpg',product:'samba-og-white-black-gum'},
+    {id:'draft-one',status:'draft',image:'https://cdn.example.com/d.jpg'}
+  ]};
+  const candidates=buildCandidates({queue,state:{history:[]},now:NOW});
+  assert.equal(candidates[0].id,'queue:ready-one');
+  assert.equal(candidates[0].product.slug,'samba-og-white-black-gum');
+  assert.ok(!candidates.some(c=>c.id.startsWith('queue:draft-one')),'drafts are never candidates');
+  assert.ok(!candidates.some(c=>c.kind==='drop'),'releases without their own image are not posted over another shoe photo');
+  assert.ok(candidates.some(c=>c.kind==='catalog'));
+  assert.ok(candidates.every(c=>c.sources.length),'every candidate carries at least one media source');
+});
+
+test('own-bucket artwork is tried before the catalog CDN link',async()=>{
+  const config={...defaultConfig,mediaBaseUrl:'https://media.example.com/ig/',maxCandidates:1};
+  const candidate=buildCandidates({state:{history:[]},config,now:NOW})[0];
+  assert.equal(candidate.sources.length,2);
+  assert.equal(candidate.sources[0],bucketUrl(config,candidate.id.split(':')[1]));
+  assert.ok(candidate.sources[1].startsWith('http'),'the catalog link stays as the fallback');
+
+  // Bucket miss falls through to the catalog link rather than skipping the shoe.
+  const fetchImpl=mediaFetch({[candidate.sources[1]]:{buffer:pngBuffer(1080,1080)}});
+  const chosen=await selectPost({state:{history:[]},config,now:NOW,fetchImpl});
+  assert.equal(chosen.candidate.id,candidate.id);
+  assert.equal(chosen.candidate.imageUrl,candidate.sources[1]);
+  assert.equal(chosen.skipped[0].url,candidate.sources[0]);
+
+  // Bucket hit wins outright.
+  const both=mediaFetch({
+    [candidate.sources[0]]:{buffer:pngBuffer(1080,1350)},
+    [candidate.sources[1]]:{buffer:pngBuffer(1080,1080)}
+  });
+  const preferred=await selectPost({state:{history:[]},config,now:NOW,fetchImpl:both});
+  assert.equal(preferred.candidate.imageUrl,candidate.sources[0]);
+  assert.equal(preferred.skipped.length,0);
+});
+
+test('bucketUrl is empty until a bucket is configured',()=>{
+  assert.equal(bucketUrl(defaultConfig,'samba-og-white-black-gum'),'');
+  assert.equal(bucketUrl({mediaBaseUrl:'https://m.example.com/ig/',mediaExtension:'png'},'x'),'https://m.example.com/ig/x.png');
+});
+
+test('catalog rotation respects history and cooldown',()=>{
+  const fresh=buildCandidates({state:{history:[]},now:NOW}).filter(c=>c.kind==='catalog');
+  const first=fresh[0].id;
+  const after=buildCandidates({state:{history:[{id:first,at:'2026-09-13T15:00:00Z'}]},now:NOW}).filter(c=>c.kind==='catalog');
+  assert.ok(!after.some(c=>c.id===first),'a shoe posted yesterday is on cooldown');
+  const wide={...defaultConfig,maxCandidates:99};
+  const stale=buildCandidates({state:{history:[{id:first,at:'2026-01-01T15:00:00Z'}]},config:wide,now:NOW}).filter(c=>c.kind==='catalog');
+  assert.ok(stale.some(c=>c.id===first),'cooldown expires');
+  assert.notEqual(stale[0].id,first,'a previously posted shoe ranks behind ones never posted');
+});
+
+test('rotation keeps going once every shoe is inside its cooldown',()=>{
+  const everything=buildCandidates({state:{history:[]},config:{...defaultConfig,maxCandidates:99},now:NOW})
+    .filter(c=>c.kind==='catalog');
+  const history=everything.map((c,i)=>({id:c.id,at:new Date(NOW.getTime()-(i+1)*3600000).toISOString()}));
+  const next=buildCandidates({state:{history},config:{...defaultConfig,maxCandidates:99},now:NOW})
+    .filter(c=>c.kind==='catalog');
+  assert.ok(next.length>0,'the autopilot must not go silent after a full rotation');
+  assert.equal(next[0].id,history.at(-1).id,'it resumes with the least recently posted shoe');
+});
+
+test('media resolution rejects unreachable, mistyped and badly cropped assets',async()=>{
+  const good='https://cdn.example.com/good.png';
+  const tall='https://cdn.example.com/tall.png';
+  const missing='https://cdn.example.com/missing.png';
+  const html='https://cdn.example.com/page.html';
+  const fetchImpl=mediaFetch({
+    [good]:{buffer:pngBuffer(1080,1350)},
+    [tall]:{buffer:pngBuffer(1080,1920)},
+    [html]:{contentType:'text/html'},
+    [missing]:{status:404}
+  });
+  const ok=await resolveMedia(good,{fetchImpl});
+  assert.equal(ok.ok,true);
+  assert.equal(ok.width,1080);
+  assert.equal((await resolveMedia(tall,{fetchImpl})).ok,false);
+  assert.match((await resolveMedia(tall,{fetchImpl})).reason,/Aspect ratio/);
+  assert.equal((await resolveMedia(html,{fetchImpl})).ok,false);
+  assert.equal((await resolveMedia(missing,{fetchImpl})).ok,false);
+  assert.equal((await resolveMedia('http://cdn.example.com/a.png',{fetchImpl})).ok,false);
+  assert.equal((await resolveMedia('',{fetchImpl})).ok,false);
+});
+
+test('selection falls through broken media to the next candidate',async()=>{
+  const queue={items:[
+    {id:'broken',status:'ready',type:'image',image:'https://cdn.example.com/broken.png',product:'samba-og-white-black-gum'},
+    {id:'works',status:'ready',type:'image',image:'https://cdn.example.com/works.png',product:'yeezy-zebra'}
+  ]};
+  const fetchImpl=mediaFetch({
+    'https://cdn.example.com/broken.png':{status:403},
+    'https://cdn.example.com/works.png':{buffer:pngBuffer(1080,1080)}
+  });
+  const skips=[];
+  const chosen=await selectPost({queue,state:{history:[]},now:NOW,fetchImpl,onSkip:s=>skips.push(s.id)});
+  assert.equal(chosen.candidate.id,'queue:works');
+  assert.equal(chosen.media.width,1080);
+  assert.ok(skips.includes('queue:broken'));
+  assert.ok(chosen.copy.caption.includes('Yeezy'),'copy is built from the chosen product, not the skipped one');
+  assert.equal(voiceCheck(chosen.copy.caption).ok,true);
+});
+
+test('selection returns nothing rather than posting when every asset fails',async()=>{
+  const fetchImpl=mediaFetch({});
+  const chosen=await selectPost({state:{history:[]},now:NOW,fetchImpl,config:{...defaultConfig,maxCandidates:3}});
+  assert.equal(chosen.candidate,null);
+  assert.equal(chosen.skipped.length,3);
+});
+
+test('a queue caption is used verbatim, never regenerated',()=>{
+  const copy=captionFor({id:'queue:x',caption:'Exactly this.',intent:'feature'});
+  assert.equal(copy.caption,'Exactly this.');
+  assert.equal(copy.firstComment,'');
+});
+
+test('history records the post and stays bounded',()=>{
+  const entry={id:'catalog:x',kind:'catalog',at:'2026-09-14T15:00:00Z',mediaId:'M1'};
+  const state=recordPost({history:[]},entry);
+  assert.equal(state.lastPostAt,entry.at);
+  assert.deepEqual(state.history,[entry]);
+  const big=recordPost({history:Array.from({length:250},(_,i)=>({id:`old${i}`,at:'2026-01-01T00:00:00Z'}))},entry);
+  assert.equal(big.history.length,200);
+  assert.equal(big.history.at(-1).mediaId,'M1');
 });
